@@ -83,6 +83,13 @@ try:
 except Exception:
     pass
 
+try:
+    from .config_manager import ConfigManager, get_config
+    _export_if_present("ConfigManager")
+    _export_if_present("get_config")
+except Exception:
+    pass
+
 # -------- یکپارچه‌سازی format_currency --------
 # اگر نسخه‌ی جدید موجود بود، همان را صادر کن؛ وگرنه نسخه‌ی قدیمی.
 if "_format_currency_persian" in globals() and _format_currency_persian:

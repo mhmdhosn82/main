@@ -16,9 +16,26 @@ class SMSManager:
             api_key: API key for SMS service
             api_url: Base URL for SMS API
         """
-        self.api_key = api_key or ""
-        self.api_url = api_url or ""
-        self.enabled = bool(api_key and api_url)
+        # Try to load from config if not provided
+        if api_key is None or api_url is None:
+            try:
+                from .config_manager import get_config
+                config = get_config()
+                sms_config = config.get_sms_config()
+                self.api_key = api_key or sms_config.get('api_key', '')
+                self.api_url = api_url or sms_config.get('api_url', '')
+                self.sender_number = sms_config.get('sender_number', '')
+            except Exception as e:
+                logger.warning(f"Failed to load SMS config: {e}")
+                self.api_key = api_key or ""
+                self.api_url = api_url or ""
+                self.sender_number = ""
+        else:
+            self.api_key = api_key
+            self.api_url = api_url
+            self.sender_number = ""
+        
+        self.enabled = bool(self.api_key and self.api_url)
     
     def configure(self, api_key, api_url):
         """Configure SMS API settings"""
