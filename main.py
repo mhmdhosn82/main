@@ -1,84 +1,119 @@
-#!/usr/bin/env python3
-"""
-Iran Insurance Installment Management Software - Hasnabadi 37751
-Main entry point for the application.
-"""
-
+"""Main application entry point"""
 import sys
-import os
-
-# Add the project root to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QFont, QFontDatabase
+import logging
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
-from src.database.db import get_database
-from src.ui.main_window import MainWindow
+from src.models import init_database, get_session, User
+from src.controllers import AuthController
+from src.ui import LoginDialog, MainWindow
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('insurance_manager.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
 
-def setup_font():
-    """Setup Vazir font for the application."""
-    # Try to load Vazir font if available
-    # For now, use a system font that supports Persian
-    font = QFont()
-    font.setFamily("Tahoma")  # Fallback to Tahoma which supports Persian
-    font.setPointSize(10)
-    return font
+logger = logging.getLogger(__name__)
 
+def create_default_user_if_needed(session):
+    """Create default admin user if no users exist"""
+    auth_ctrl = AuthController(session)
+    
+    # Check if any users exist
+    user_count = session.query(User).count()
+    
+    if user_count == 0:
+        logger.info("No users found, creating default admin user")
+        success, message, user = auth_ctrl.register_user(
+            username='admin',
+            password='admin123',
+            full_name='مدیر سیستم',
+            email='admin@example.com',
+            phone='09123456789',
+            role='admin'
+        )
+        
+        if success:
+            logger.info("Default admin user created successfully")
+            return True
+        else:
+            logger.error(f"Failed to create default user: {message}")
+            return False
+    
+    return True
 
 def main():
-    """Main application entry point."""
-    # Create Qt application
-    app = QApplication(sys.argv)
+    """Main application function"""
+    try:
+        # Initialize Qt Application
+        app = QApplication(sys.argv)
+        app.setApplicationName("Iran Insurance Installment Manager")
+        app.setLayoutDirection(Qt.RightToLeft)
+        
+        # Set application style
+        app.setStyle('Fusion')
+        
+        logger.info("Starting Iran Insurance Installment Management System")
+        
+        # Initialize database
+        logger.info("Initializing database...")
+        init_database()
+        
+        # Get database session
+        session = get_session()
+        
+        # Create default user if needed
+        if not create_default_user_if_needed(session):
+            QMessageBox.critical(
+                None,
+                "خطا",
+                "خطا در ایجاد کاربر پیش‌فرض. لطفاً لاگ‌ها را بررسی کنید."
+            )
+            return 1
+        
+        # Create and show login dialog
+        auth_controller = AuthController(session)
+        login_dialog = LoginDialog(auth_controller)
+        
+        # Show login dialog
+        if login_dialog.exec_() == LoginDialog.Accepted:
+            user = auth_controller.get_current_user()
+            
+            if user:
+                logger.info(f"User '{user.username}' logged in successfully")
+                
+                # Create and show main window
+                main_window = MainWindow(user, session)
+                main_window.show()
+                
+                # Run application
+                exit_code = app.exec_()
+                
+                # Cleanup
+                logger.info("Application closing")
+                session.close()
+                
+                return exit_code
+            else:
+                logger.error("Login succeeded but user object is None")
+                return 1
+        else:
+            logger.info("User cancelled login")
+            session.close()
+            return 0
     
-    # Set application properties
-    app.setApplicationName("نرم‌افزار مدیریت اقساط بیمه ایران - حسن‌آبادی 37751")
-    app.setOrganizationName("Hasnabadi 37751")
-    
-    # Set RTL layout direction for Persian
-    app.setLayoutDirection(Qt.RightToLeft)
-    
-    # Setup font
-    font = setup_font()
-    app.setFont(font)
-    
-    # Set application style
-    app.setStyle('Fusion')
-    
-    # Set application stylesheet for professional look
-    app.setStyleSheet("""
-        QMainWindow {
-            background-color: #ecf0f1;
-        }
-        QWidget {
-            font-family: Tahoma, Arial, sans-serif;
-        }
-        QTableWidget {
-            gridline-color: #bdc3c7;
-        }
-        QTableWidget::item:selected {
-            background-color: #3498db;
-            color: white;
-        }
-        QPushButton {
-            font-weight: bold;
-        }
-        QLineEdit:focus, QComboBox:focus {
-            border: 2px solid #3498db;
-        }
-    """)
-    
-    # Initialize database
-    db = get_database()
-    
-    # Create and show main window
-    main_window = MainWindow(db)
-    main_window.show()
-    
-    # Run application
-    sys.exit(app.exec_())
+    except Exception as e:
+        logger.exception(f"Fatal error: {e}")
+        QMessageBox.critical(
+            None,
+            "خطای جدی",
+            f"خطای غیرمنتظره:\n{str(e)}\n\nلطفاً لاگ‌ها را بررسی کنید."
+        )
+        return 1
 
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    sys.exit(main())

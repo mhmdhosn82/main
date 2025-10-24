@@ -5,3 +5,33 @@ reportlab>=4.0.0
 jdatetime>=4.1.0
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
+# Core GUI Framework
+PyQt5==5.15.10
+PyQt5-Qt5==5.15.2
+PyQt5-sip==12.13.0
+
+# Database
+sqlalchemy==2.0.23
+
+# Charts and Visualization
+matplotlib==3.8.2
+plotly==5.18.0
+
+# Persian/Farsi Support
+jdatetime==4.1.1
+persiantools==4.1.1
+
+# Notifications
+plyer==2.1.0
+
+# SMS Integration (for future use)
+requests==2.31.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+pandas==2.1.4
+openpyxl==3.1.2
+
+# Security
+bcrypt==4.1.2

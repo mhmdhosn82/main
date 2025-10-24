@@ -20,10 +20,18 @@ wheels/
 .installed.cfg
 *.egg
 
+# Virtual Environment
+venv/
+ENV/
+env/
+
 # Database
 *.db
 *.sqlite
 *.sqlite3
+
+# Logs
+*.log
 
 # IDE
 .vscode/
@@ -60,3 +68,6 @@ htmlcov/
 # Demo and test generated files
 *_report.xlsx
 *_report.pdf
+# Application specific
+insurance.db
+insurance_manager.log
