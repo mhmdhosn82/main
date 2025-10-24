@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                             QDateEdit, QTextEdit, QDoubleSpinBox)
 from PyQt5.QtCore import Qt, QDate
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import logging
 
 logger = logging.getLogger(__name__)
@@ -111,6 +112,19 @@ class PolicyWidget(QWidget):
                 view_btn.clicked.connect(lambda checked, p=policy: self.view_policy(p))
                 btn_layout.addWidget(view_btn)
                 
+                installments_btn = QPushButton("مدیریت اقساط")
+                installments_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #3498db;
+                        color: white;
+                        padding: 5px 10px;
+                        border-radius: 3px;
+                    }
+                    QPushButton:hover { background-color: #2980b9; }
+                """)
+                installments_btn.clicked.connect(lambda checked, p=policy: self.manage_installments(p))
+                btn_layout.addWidget(installments_btn)
+                
                 btn_widget.setLayout(btn_layout)
                 self.table.setCellWidget(row, 6, btn_widget)
             
@@ -133,10 +147,17 @@ class PolicyWidget(QWidget):
             "جزئیات بیمه‌نامه",
             f"شماره: {policy.policy_number}\n"
             f"بیمه‌گذار: {policy.policy_holder_name}\n"
+            f"موبایل: {policy.mobile_number or '-'}\n"
             f"نوع: {policy.policy_type}\n"
-            f"شرکت: {policy.insurance_company}\n"
+            f"شرکت: {policy.insurance_company or '-'}\n"
             f"وضعیت: {policy.status}"
         )
+    
+    def manage_installments(self, policy):
+        """Open installment management page for policy"""
+        from .policy_installment_management import PolicyInstallmentDialog
+        dialog = PolicyInstallmentDialog(policy, self.session, self)
+        dialog.exec_()
     
     def search_policies(self, text):
         """Search policies"""
@@ -172,36 +193,48 @@ class AddPolicyDialog(QDialog):
         
         self.policy_number = QLineEdit()
         self.holder_name = QLineEdit()
-        self.holder_national_id = QLineEdit()
+        self.mobile_number = QLineEdit()
+        self.mobile_number.setPlaceholderText("مثال: 09123456789")
         
         self.policy_type = QComboBox()
-        self.policy_type.addItems(["عمر", "درمان", "اتومبیل", "آتش‌سوزی", "سایر"])
-        
-        self.insurance_company = QLineEdit()
+        self.policy_type.addItems(["شخص ثالث", "بدنه", "عمر", "حوادث", "آتش‌سوزی"])
         
         self.total_amount = QDoubleSpinBox()
-        self.total_amount.setMaximum(999999999)
+        self.total_amount.setMaximum(999999999999)
+        self.total_amount.setGroupSeparatorShown(True)
         self.total_amount.setSuffix(" ریال")
+        
+        self.down_payment = QDoubleSpinBox()
+        self.down_payment.setMaximum(999999999999)
+        self.down_payment.setGroupSeparatorShown(True)
+        self.down_payment.setSuffix(" ریال")
+        
+        self.num_installments = QComboBox()
+        self.num_installments.addItems(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "18", "24", "36"])
+        self.num_installments.setCurrentText("12")
         
         self.start_date = QDateEdit()
         self.start_date.setCalendarPopup(True)
         self.start_date.setDate(QDate.currentDate())
+        self.start_date.setDisplayFormat("yyyy/MM/dd")
         
         self.end_date = QDateEdit()
         self.end_date.setCalendarPopup(True)
         self.end_date.setDate(QDate.currentDate().addYears(1))
+        self.end_date.setDisplayFormat("yyyy/MM/dd")
         
         self.description = QTextEdit()
         self.description.setMaximumHeight(80)
         
         layout.addRow("شماره بیمه‌نامه:", self.policy_number)
         layout.addRow("نام بیمه‌گذار:", self.holder_name)
-        layout.addRow("کد ملی:", self.holder_national_id)
+        layout.addRow("شماره موبایل:", self.mobile_number)
         layout.addRow("نوع بیمه:", self.policy_type)
-        layout.addRow("شرکت بیمه:", self.insurance_company)
-        layout.addRow("مبلغ کل:", self.total_amount)
-        layout.addRow("تاریخ شروع:", self.start_date)
-        layout.addRow("تاریخ پایان:", self.end_date)
+        layout.addRow("مبلغ کل بیمه:", self.total_amount)
+        layout.addRow("مبلغ پیش‌پرداخت:", self.down_payment)
+        layout.addRow("تعداد اقساط:", self.num_installments)
+        layout.addRow("تاریخ صدور (شمسی):", self.start_date)
+        layout.addRow("تاریخ پایان (شمسی):", self.end_date)
         layout.addRow("توضیحات:", self.description)
         
         # Buttons
@@ -218,19 +251,36 @@ class AddPolicyDialog(QDialog):
     
     def save_policy(self):
         """Save policy"""
-        from ..controllers import PolicyController
+        from ..controllers import PolicyController, InstallmentController
+        from dateutil.relativedelta import relativedelta
         
         if not self.policy_number.text() or not self.holder_name.text():
             QMessageBox.warning(self, "خطا", "لطفاً فیلدهای ضروری را پر کنید")
             return
         
+        # Validate mobile number
+        mobile = self.mobile_number.text().strip()
+        if mobile and not mobile.startswith('09') or (mobile and len(mobile) != 11):
+            QMessageBox.warning(self, "خطا", "شماره موبایل باید با 09 شروع شده و 11 رقم باشد")
+            return
+        
+        total_amount = self.total_amount.value()
+        down_payment = self.down_payment.value()
+        num_installments = int(self.num_installments.currentText())
+        
+        # Validate down payment
+        if down_payment > total_amount:
+            QMessageBox.warning(self, "خطا", "مبلغ پیش‌پرداخت نمی‌تواند بیشتر از مبلغ کل باشد")
+            return
+        
         policy_data = {
             'policy_number': self.policy_number.text(),
             'policy_holder_name': self.holder_name.text(),
-            'policy_holder_national_id': self.holder_national_id.text(),
+            'mobile_number': mobile,
             'policy_type': self.policy_type.currentText(),
-            'insurance_company': self.insurance_company.text(),
-            'total_amount': self.total_amount.value(),
+            'total_amount': total_amount,
+            'down_payment': down_payment,
+            'num_installments': num_installments,
             'start_date': self.start_date.date().toPyDate(),
             'end_date': self.end_date.date().toPyDate(),
             'description': self.description.toPlainText()
@@ -239,8 +289,32 @@ class AddPolicyDialog(QDialog):
         controller = PolicyController(self.session)
         success, message, policy = controller.create_policy(self.user.id, policy_data)
         
-        if success:
-            QMessageBox.information(self, "موفق", message)
+        if success and policy:
+            # Create installments: remaining amount after down payment divided by num_installments
+            remaining_amount = total_amount - down_payment
+            if remaining_amount > 0 and num_installments > 0:
+                installment_ctrl = InstallmentController(self.session)
+                # First installment starts next month
+                start_date = self.start_date.date().toPyDate()
+                first_installment_date = start_date + relativedelta(months=1)
+                
+                success_inst, msg_inst, _ = installment_ctrl.create_installments_batch(
+                    policy.id,
+                    remaining_amount,
+                    num_installments,
+                    first_installment_date,
+                    interval_days=30
+                )
+                
+                if success_inst:
+                    QMessageBox.information(self, "موفق", 
+                        f"{message}\n{msg_inst}")
+                else:
+                    QMessageBox.warning(self, "هشدار", 
+                        f"{message}\nاما خطا در ایجاد اقساط: {msg_inst}")
+            else:
+                QMessageBox.information(self, "موفق", message)
+            
             self.accept()
         else:
             QMessageBox.warning(self, "خطا", message)

@@ -21,23 +21,46 @@ class InstallmentWidget(QWidget):
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         
-        title = QLabel("مدیریت اقساط")
+        # Header with title
+        header_layout = QHBoxLayout()
+        title = QLabel("یادآورهای اقساط سررسید")
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
         
-        # Table
+        # Description
+        desc = QLabel("اقساطی که در 30 روز آینده سررسید دارند:")
+        desc.setStyleSheet("color: #7f8c8d; margin-bottom: 10px;")
+        layout.addWidget(desc)
+        
+        # Table with reminder fields
         self.table = QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "بیمه‌نامه", "قسط", "مبلغ", "سررسید", "تاریخ پرداخت", "وضعیت", "عملیات"
+            "شماره بیمه‌نامه", "نوع بیمه", "مبلغ قسط", "تاریخ سررسید", 
+            "شماره موبایل", "نام بیمه‌گذار", "عملیات"
         ])
         self.table.setLayoutDirection(Qt.RightToLeft)
+        self.table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #bdc3c7;
+                gridline-color: #ecf0f1;
+            }
+            QHeaderView::section {
+                background-color: #34495e;
+                color: white;
+                padding: 8px;
+                font-weight: bold;
+            }
+        """)
         layout.addWidget(self.table)
         
         self.setLayout(layout)
     
     def load_installments(self):
-        """Load installments"""
+        """Load upcoming installments (reminder view)"""
         from ..controllers import InstallmentController
         from ..models import InsurancePolicy
         from ..utils.persian_utils import format_currency, PersianDateConverter
@@ -45,30 +68,61 @@ class InstallmentWidget(QWidget):
         try:
             controller = InstallmentController(self.session)
             
-            # Get all installments for user's policies
+            # Get upcoming installments in next 30 days
             from ..models import Installment
+            from datetime import datetime, timedelta
+            
+            today = datetime.now()
+            future_date = today + timedelta(days=30)
+            
             installments = self.session.query(Installment, InsurancePolicy).join(
                 InsurancePolicy
-            ).filter(InsurancePolicy.user_id == self.user.id).all()
+            ).filter(
+                InsurancePolicy.user_id == self.user.id,
+                Installment.due_date >= today,
+                Installment.due_date <= future_date,
+                Installment.status.in_(['pending', 'overdue'])
+            ).order_by(Installment.due_date).all()
             
             self.table.setRowCount(len(installments))
             
             for row, (inst, policy) in enumerate(installments):
+                # Policy Number
                 self.table.setItem(row, 0, QTableWidgetItem(policy.policy_number))
-                self.table.setItem(row, 1, QTableWidgetItem(str(inst.installment_number)))
+                
+                # Insurance Type
+                self.table.setItem(row, 1, QTableWidgetItem(policy.policy_type or "-"))
+                
+                # Due Amount
                 self.table.setItem(row, 2, QTableWidgetItem(format_currency(inst.amount)))
+                
+                # Due Date
                 self.table.setItem(row, 3, QTableWidgetItem(
                     PersianDateConverter.gregorian_to_jalali(inst.due_date)
                 ))
-                payment_date = PersianDateConverter.gregorian_to_jalali(inst.payment_date) if inst.payment_date else "-"
-                self.table.setItem(row, 4, QTableWidgetItem(payment_date))
-                self.table.setItem(row, 5, QTableWidgetItem(inst.status))
+                
+                # Mobile Number
+                self.table.setItem(row, 4, QTableWidgetItem(policy.mobile_number or "-"))
+                
+                # Policy Holder Name
+                self.table.setItem(row, 5, QTableWidgetItem(policy.policy_holder_name))
                 
                 # Action button
-                if inst.status == 'pending':
+                if inst.status in ['pending', 'overdue']:
                     btn = QPushButton("ثبت پرداخت")
+                    btn.setStyleSheet("""
+                        QPushButton {
+                            background-color: #27ae60;
+                            color: white;
+                            padding: 5px 10px;
+                            border-radius: 3px;
+                        }
+                        QPushButton:hover { background-color: #229954; }
+                    """)
                     btn.clicked.connect(lambda checked, i=inst: self.mark_paid(i))
                     self.table.setCellWidget(row, 6, btn)
+                else:
+                    self.table.setItem(row, 6, QTableWidgetItem(""))
             
             self.table.resizeColumnsToContents()
             

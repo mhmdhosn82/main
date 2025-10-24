@@ -13,9 +13,12 @@ class InsurancePolicy(Base):
     policy_number = Column(String(50), unique=True, nullable=False)
     policy_holder_name = Column(String(100), nullable=False)
     policy_holder_national_id = Column(String(20))
-    policy_type = Column(String(50))  # Life, Health, Auto, Property, etc.
+    mobile_number = Column(String(20))  # Mobile number for reminders
+    policy_type = Column(String(50))  # Third Party, Body, Life, Accident, Fire
     insurance_company = Column(String(100))
     total_amount = Column(Float, nullable=False)
+    down_payment = Column(Float, default=0)  # Down payment amount
+    num_installments = Column(Integer, default=0)  # Number of installments
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
     description = Column(String(500))

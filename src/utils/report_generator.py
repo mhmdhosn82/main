@@ -18,7 +18,7 @@ class ReportGenerator:
         self.session = session
     
     def generate_installment_report(self, start_date=None, end_date=None, 
-                                   status=None, policy_id=None):
+                                   status=None, policy_id=None, insurance_type=None):
         """
         Generate installment report with filters
         
@@ -27,6 +27,7 @@ class ReportGenerator:
             end_date: Filter by due date <= end_date
             status: Filter by status (pending, paid, overdue, etc.)
             policy_id: Filter by specific policy
+            insurance_type: Filter by insurance type (Third Party, Body, etc.)
             
         Returns:
             pandas DataFrame with report data
@@ -36,7 +37,8 @@ class ReportGenerator:
         query = self.session.query(
             Installment,
             InsurancePolicy.policy_number,
-            InsurancePolicy.policy_holder_name
+            InsurancePolicy.policy_holder_name,
+            InsurancePolicy.policy_type
         ).join(InsurancePolicy)
         
         # Apply filters
@@ -48,16 +50,19 @@ class ReportGenerator:
             query = query.filter(Installment.status == status)
         if policy_id:
             query = query.filter(Installment.policy_id == policy_id)
+        if insurance_type:
+            query = query.filter(InsurancePolicy.policy_type == insurance_type)
         
         # Execute query
         results = query.all()
         
         # Convert to DataFrame
         data = []
-        for inst, policy_num, holder_name in results:
+        for inst, policy_num, holder_name, policy_type in results:
             data.append({
                 'policy_number': policy_num,
                 'policy_holder': holder_name,
+                'insurance_type': policy_type,
                 'installment_number': inst.installment_number,
                 'amount': inst.amount,
                 'due_date': inst.due_date,
