@@ -1,5 +1,8 @@
-"""Database package initialization."""
+"""Database package initialization.
 
-from .db import Database, get_database
+Note: This package is deprecated. The new architecture uses SQLAlchemy
+models from src.models.database instead.
+"""
 
-__all__ = ['Database', 'get_database']
+__all__ = []
+
