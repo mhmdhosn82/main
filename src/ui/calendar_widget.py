@@ -1,12 +1,237 @@
 """Calendar widget for installments"""
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QCalendarWidget, QLabel,
-                            QListWidget, QHBoxLayout, QMessageBox)
-from PyQt5.QtCore import Qt, QDate
-from PyQt5.QtGui import QTextCharFormat, QColor
+                            QListWidget, QHBoxLayout, QMessageBox, QGridLayout,
+                            QPushButton, QFrame)
+from PyQt5.QtCore import Qt, QDate, pyqtSignal
+from PyQt5.QtGui import QTextCharFormat, QColor, QFont
 from datetime import datetime
+import jdatetime
+from persiantools.jdatetime import JalaliDate, JalaliDateTime
 import logging
 
 logger = logging.getLogger(__name__)
+
+class PersianCalendarWidget(QWidget):
+    """Custom Persian Calendar Widget"""
+    dateClicked = pyqtSignal(QDate)
+    
+    def __init__(self):
+        super().__init__()
+        self.current_jalali = JalaliDateTime.now()
+        self.selected_date = None
+        self.date_formats = {}  # Store formatting for dates
+        self.setup_ui()
+        self.update_calendar()
+    
+    def setup_ui(self):
+        """Setup Persian calendar UI"""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Header with month/year and navigation
+        header_layout = QHBoxLayout()
+        
+        self.prev_month_btn = QPushButton("◀")
+        self.prev_month_btn.setMaximumWidth(40)
+        self.prev_month_btn.clicked.connect(self.previous_month)
+        self.prev_month_btn.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #2980b9;
+            }
+        """)
+        
+        self.month_year_label = QLabel()
+        self.month_year_label.setAlignment(Qt.AlignCenter)
+        self.month_year_label.setStyleSheet("""
+            QLabel {
+                font-size: 14pt;
+                font-weight: bold;
+                color: #2c3e50;
+                padding: 5px;
+            }
+        """)
+        
+        self.next_month_btn = QPushButton("▶")
+        self.next_month_btn.setMaximumWidth(40)
+        self.next_month_btn.clicked.connect(self.next_month)
+        self.next_month_btn.setStyleSheet("""
+            QPushButton {
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #2980b9;
+            }
+        """)
+        
+        header_layout.addWidget(self.next_month_btn)
+        header_layout.addWidget(self.month_year_label, stretch=1)
+        header_layout.addWidget(self.prev_month_btn)
+        
+        layout.addLayout(header_layout)
+        
+        # Calendar grid
+        self.calendar_grid = QGridLayout()
+        self.calendar_grid.setSpacing(2)
+        
+        # Weekday headers
+        weekdays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه']
+        for col, day in enumerate(weekdays):
+            label = QLabel(day)
+            label.setAlignment(Qt.AlignCenter)
+            label.setStyleSheet("""
+                QLabel {
+                    background: #34495e;
+                    color: white;
+                    padding: 8px;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+            """)
+            self.calendar_grid.addWidget(label, 0, col)
+        
+        # Day buttons (6 rows x 7 columns)
+        self.day_buttons = []
+        for row in range(1, 7):
+            week_buttons = []
+            for col in range(7):
+                btn = QPushButton()
+                btn.setMinimumHeight(50)
+                btn.clicked.connect(lambda checked, r=row-1, c=col: self.day_clicked(r, c))
+                self.calendar_grid.addWidget(btn, row, col)
+                week_buttons.append(btn)
+            self.day_buttons.append(week_buttons)
+        
+        layout.addLayout(self.calendar_grid)
+        self.setLayout(layout)
+    
+    def update_calendar(self):
+        """Update calendar display"""
+        # Update month/year label
+        month_names = {
+            1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد',
+            4: 'تیر', 5: 'مرداد', 6: 'شهریور',
+            7: 'مهر', 8: 'آبان', 9: 'آذر',
+            10: 'دی', 11: 'بهمن', 12: 'اسفند'
+        }
+        month_name = month_names.get(self.current_jalali.month, '')
+        self.month_year_label.setText(f"{month_name} {self.current_jalali.year}")
+        
+        # Get first day of month
+        first_day = JalaliDate(self.current_jalali.year, self.current_jalali.month, 1)
+        
+        # Get weekday of first day (Saturday = 0)
+        first_weekday = first_day.weekday()
+        
+        # Get number of days in month
+        if self.current_jalali.month <= 6:
+            days_in_month = 31
+        elif self.current_jalali.month <= 11:
+            days_in_month = 30
+        else:
+            # Esfand - check for leap year
+            days_in_month = 30 if first_day.is_leap() else 29
+        
+        # Update day buttons
+        day = 1
+        for row in range(6):
+            for col in range(7):
+                btn = self.day_buttons[row][col]
+                cell_index = row * 7 + col
+                
+                if cell_index < first_weekday or day > days_in_month:
+                    btn.setText("")
+                    btn.setEnabled(False)
+                    btn.setStyleSheet("background: #ecf0f1; border: none;")
+                else:
+                    btn.setText(str(day))
+                    btn.setEnabled(True)
+                    
+                    # Create date for this day
+                    jalali_date = JalaliDate(self.current_jalali.year, self.current_jalali.month, day)
+                    gregorian_date = jalali_date.to_gregorian()
+                    qdate = QDate(gregorian_date.year, gregorian_date.month, gregorian_date.day)
+                    
+                    # Check if this date has custom formatting
+                    date_key = gregorian_date
+                    if date_key in self.date_formats:
+                        fmt = self.date_formats[date_key]
+                        bg_color = fmt.background().color()
+                        btn.setStyleSheet(f"""
+                            QPushButton {{
+                                background: rgba({bg_color.red()}, {bg_color.green()}, {bg_color.blue()}, {bg_color.alpha()});
+                                border: 2px solid #bdc3c7;
+                                border-radius: 5px;
+                                font-weight: bold;
+                                font-size: 11pt;
+                            }}
+                            QPushButton:hover {{
+                                border: 2px solid #3498db;
+                                background: rgba({bg_color.red()}, {bg_color.green()}, {bg_color.blue()}, 200);
+                            }}
+                        """)
+                    else:
+                        btn.setStyleSheet("""
+                            QPushButton {
+                                background: white;
+                                border: 1px solid #bdc3c7;
+                                border-radius: 5px;
+                                font-size: 11pt;
+                            }
+                            QPushButton:hover {
+                                background: #d5f4e6;
+                                border: 2px solid #3498db;
+                            }
+                        """)
+                    
+                    # Store the date in button property
+                    btn.setProperty("qdate", qdate)
+                    btn.setProperty("day", day)
+                    
+                    day += 1
+    
+    def day_clicked(self, row, col):
+        """Handle day button click"""
+        btn = self.day_buttons[row][col]
+        qdate = btn.property("qdate")
+        if qdate:
+            self.selected_date = qdate
+            self.dateClicked.emit(qdate)
+    
+    def previous_month(self):
+        """Go to previous month"""
+        if self.current_jalali.month == 1:
+            self.current_jalali = JalaliDateTime(self.current_jalali.year - 1, 12, 1)
+        else:
+            self.current_jalali = JalaliDateTime(self.current_jalali.year, self.current_jalali.month - 1, 1)
+        self.update_calendar()
+    
+    def next_month(self):
+        """Go to next month"""
+        if self.current_jalali.month == 12:
+            self.current_jalali = JalaliDateTime(self.current_jalali.year + 1, 1, 1)
+        else:
+            self.current_jalali = JalaliDateTime(self.current_jalali.year, self.current_jalali.month + 1, 1)
+        self.update_calendar()
+    
+    def setDateTextFormat(self, qdate, fmt):
+        """Set text format for a specific date"""
+        date = qdate.toPyDate()
+        self.date_formats[date] = fmt
+        self.update_calendar()
+
 
 class CalendarWidget(QWidget):
     """Calendar view for installments"""
@@ -24,51 +249,111 @@ class CalendarWidget(QWidget):
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         
-        title = QLabel("تقویم اقساط")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        title = QLabel("تقویم اقساط شمسی")
+        title.setStyleSheet("""
+            QLabel {
+                font-size: 20px;
+                font-weight: bold;
+                color: #2c3e50;
+                padding: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2ecc71);
+                color: white;
+                border-radius: 8px;
+            }
+        """)
         layout.addWidget(title)
         
         content_layout = QHBoxLayout()
         
-        # Calendar
-        self.calendar = QCalendarWidget()
-        self.calendar.setGridVisible(True)
-        self.calendar.setLayoutDirection(Qt.LeftToRight)
-        self.calendar.clicked.connect(self.date_selected)
+        # Persian Calendar
+        self.calendar = PersianCalendarWidget()
+        self.calendar.dateClicked.connect(self.date_selected)
         content_layout.addWidget(self.calendar)
         
         # Details panel
+        details_frame = QFrame()
+        details_frame.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
         details_layout = QVBoxLayout()
         
         self.selected_date_label = QLabel("تاریخ انتخابی:")
-        self.selected_date_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.selected_date_label.setStyleSheet("""
+            QLabel {
+                font-weight: bold;
+                font-size: 14px;
+                color: #2c3e50;
+                background: #ecf0f1;
+                padding: 10px;
+                border-radius: 5px;
+            }
+        """)
         details_layout.addWidget(self.selected_date_label)
         
         self.installments_list = QListWidget()
         self.installments_list.setLayoutDirection(Qt.RightToLeft)
+        self.installments_list.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #bdc3c7;
+                border-radius: 5px;
+                padding: 5px;
+                background: white;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #ecf0f1;
+            }
+            QListWidget::item:hover {
+                background: #d5f4e6;
+            }
+        """)
         details_layout.addWidget(self.installments_list)
         
-        details_widget = QWidget()
-        details_widget.setLayout(details_layout)
-        details_widget.setMinimumWidth(300)
-        content_layout.addWidget(details_widget)
+        details_frame.setLayout(details_layout)
+        details_frame.setMinimumWidth(300)
+        content_layout.addWidget(details_frame)
         
         layout.addLayout(content_layout)
         
         # Legend
+        legend_frame = QFrame()
+        legend_frame.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
         legend_layout = QHBoxLayout()
         legend_layout.addWidget(self.create_legend_item("🟢 پرداخت شده", QColor(39, 174, 96)))
         legend_layout.addWidget(self.create_legend_item("🟡 در انتظار", QColor(243, 156, 18)))
         legend_layout.addWidget(self.create_legend_item("🔴 معوق", QColor(231, 76, 60)))
         legend_layout.addStretch()
-        layout.addLayout(legend_layout)
+        legend_frame.setLayout(legend_layout)
+        layout.addWidget(legend_frame)
         
         self.setLayout(layout)
     
     def create_legend_item(self, text, color):
         """Create legend item"""
         label = QLabel(text)
-        label.setStyleSheet(f"padding: 5px; margin: 5px;")
+        label.setStyleSheet(f"""
+            QLabel {{
+                padding: 8px 15px;
+                margin: 5px;
+                background: rgba({color.red()}, {color.green()}, {color.blue()}, 100);
+                border-radius: 5px;
+                font-weight: bold;
+                border: 1px solid rgba({color.red()}, {color.green()}, {color.blue()}, 200);
+            }}
+        """)
         return label
     
     def load_installments(self):
@@ -121,12 +406,26 @@ class CalendarWidget(QWidget):
     
     def date_selected(self, qdate):
         """Handle date selection"""
-        from ..utils.persian_utils import format_currency
+        from ..utils.persian_utils import format_currency, PersianDateConverter
         
         date = qdate.toPyDate()
         
-        # Update label
-        persian_date = f"{date.year}/{date.month:02d}/{date.day:02d}"
+        # Update label with Persian date
+        gregorian_datetime = datetime(date.year, date.month, date.day)
+        jalali_date = JalaliDateTime.to_jalali(gregorian_datetime)
+        
+        month_names = {
+            1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد',
+            4: 'تیر', 5: 'مرداد', 6: 'شهریور',
+            7: 'مهر', 8: 'آبان', 9: 'آذر',
+            10: 'دی', 11: 'بهمن', 12: 'اسفند'
+        }
+        weekdays = {
+            0: 'شنبه', 1: 'یکشنبه', 2: 'دوشنبه',
+            3: 'سه‌شنبه', 4: 'چهارشنبه', 5: 'پنج‌شنبه', 6: 'جمعه'
+        }
+        
+        persian_date = f"{weekdays.get(jalali_date.weekday(), '')} {jalali_date.day} {month_names.get(jalali_date.month, '')} {jalali_date.year}"
         self.selected_date_label.setText(f"تاریخ انتخابی: {persian_date}")
         
         # Clear list
