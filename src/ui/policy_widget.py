@@ -2,7 +2,7 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                             QTableWidgetItem, QPushButton, QLabel, QLineEdit,
                             QMessageBox, QDialog, QFormLayout, QComboBox,
-                            QDateEdit, QTextEdit, QDoubleSpinBox)
+                            QTextEdit, QDoubleSpinBox)
 from PyQt5.QtCore import Qt, QDate
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
