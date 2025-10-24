@@ -56,3 +56,7 @@ htmlcov/
 # Temporary files
 /tmp/
 *.tmp
+
+# Demo and test generated files
+*_report.xlsx
+*_report.pdf
