@@ -40,10 +40,34 @@ env/
 *.swo
 *~
 
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
 # OS
 .DS_Store
 Thumbs.db
 
+# Logs
+*.log
+
+# Backup files
+*_backup_*.db
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+/tmp/
+*.tmp
+
+# Demo and test generated files
+*_report.xlsx
+*_report.pdf
 # Application specific
 insurance.db
 insurance_manager.log

@@ -7,7 +7,8 @@ from .installment_widget import InstallmentWidget
 from .calendar_widget import CalendarWidget
 from .reports_widget import ReportsWidget
 from .sms_widget import SMSWidget
-
+from .archive import ArchiveWidget
+from .settings import SettingsWidget
 __all__ = [
     'LoginDialog',
     'MainWindow',
@@ -16,5 +17,8 @@ __all__ = [
     'InstallmentWidget',
     'CalendarWidget',
     'ReportsWidget',
+    'SettingsWidget' ,
+    'ArchiveWidget',
     'SMSWidget'
+  
 ]
