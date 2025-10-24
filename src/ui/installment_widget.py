@@ -147,6 +147,19 @@ class InstallmentWidget(QWidget):
             if success:
                 QMessageBox.information(self, "موفق", message)
                 self.load_installments()
+                
+                # Refresh other widgets in the main window if available
+                parent_window = self.window()
+                if hasattr(parent_window, 'calendar_widget'):
+                    try:
+                        parent_window.calendar_widget.refresh()
+                    except Exception as e:
+                        logger.warning(f"Could not refresh calendar: {e}")
+                if hasattr(parent_window, 'dashboard'):
+                    try:
+                        parent_window.dashboard.refresh()
+                    except Exception as e:
+                        logger.warning(f"Could not refresh dashboard: {e}")
             else:
                 QMessageBox.warning(self, "خطا", message)
     

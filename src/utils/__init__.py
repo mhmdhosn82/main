@@ -68,8 +68,39 @@ except Exception:
 try:
     from .notification_manager import NotificationManager
     _export_if_present("NotificationManager")
-except Exception:
-    pass
+except Exception as e:
+    # If plyer is not installed, create a fallback NotificationManager
+    import logging
+    _logger = logging.getLogger(__name__)
+    _logger.warning(f"NotificationManager not available: {e}. Creating fallback version.")
+    
+    class NotificationManager:
+        """Fallback notification manager when plyer is not available"""
+        def __init__(self):
+            self.app_name = "Iran Insurance Manager"
+            self.app_icon = None
+        
+        def send_notification(self, title, message, timeout=10):
+            """Log notification instead of showing desktop notification"""
+            _logger.info(f"NOTIFICATION: {title} - {message}")
+            return True
+        
+        def send_installment_reminder(self, policy_number, amount, due_date):
+            """Log installment reminder"""
+            _logger.info(f"REMINDER: Policy {policy_number}, Amount: {amount}, Due: {due_date}")
+            return True
+        
+        def send_overdue_reminder(self, policy_number, days_overdue):
+            """Log overdue reminder"""
+            _logger.info(f"OVERDUE: Policy {policy_number}, {days_overdue} days overdue")
+            return True
+        
+        def send_payment_confirmation(self, policy_number, amount):
+            """Log payment confirmation"""
+            _logger.info(f"PAYMENT: Policy {policy_number}, Amount: {amount}")
+            return True
+    
+    _export_if_present("NotificationManager")
 
 try:
     from .sms_manager import SMSManager
