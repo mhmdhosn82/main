@@ -2,6 +2,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -23,6 +26,16 @@ def init_database():
     
     # Create all tables
     Base.metadata.create_all(bind=engine)
+    
+    # Run migrations to update existing database schema
+    try:
+        from ..migrations import MigrationManager
+        migration_manager = MigrationManager(DB_PATH)
+        migration_manager.run_migrations()
+    except Exception as e:
+        logger.error(f"Failed to run migrations: {e}")
+        # Don't fail initialization if migrations fail - let the app continue
+        # This allows the app to work even if migrations have issues
     
     return engine
 
