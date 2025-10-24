@@ -294,6 +294,19 @@ class MainWindow(QMainWindow):
     def on_tab_changed(self, index):
         """Handle tab change event"""
         self.update_sidebar_selection(index)
+        
+        # Refresh the widget when its tab is activated
+        try:
+            if index == 0:  # Dashboard
+                self.dashboard.refresh()
+            elif index == 2:  # Installments/Reminders
+                self.installment_widget.refresh()
+            elif index == 3:  # Calendar
+                self.calendar_widget.refresh()
+            elif index == 4:  # Reports
+                self.reports_widget.refresh()
+        except Exception as e:
+            logger.error(f"Error refreshing tab {index}: {e}")
     
     def setup_menu_bar(self):
         """Setup menu bar"""
