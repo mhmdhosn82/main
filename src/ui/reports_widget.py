@@ -1,9 +1,10 @@
 """Reports widget for custom report generation"""
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                            QPushButton, QComboBox, QDateEdit, QMessageBox,
+                            QPushButton, QComboBox, QMessageBox,
                             QFileDialog, QGroupBox, QFormLayout)
 from PyQt5.QtCore import Qt, QDate
 from datetime import datetime, timedelta
+from .persian_date_edit import PersianDateEdit
 import logging
 
 logger = logging.getLogger(__name__)
@@ -45,15 +46,13 @@ class ReportsWidget(QWidget):
         filter_group = QGroupBox("فیلترها")
         filter_layout = QFormLayout()
         
-        self.start_date = QDateEdit()
-        self.start_date.setCalendarPopup(True)
+        self.start_date = PersianDateEdit()
         self.start_date.setDate(QDate.currentDate().addMonths(-6))
-        filter_layout.addRow("از تاریخ:", self.start_date)
+        filter_layout.addRow("از تاریخ (شمسی):", self.start_date)
         
-        self.end_date = QDateEdit()
-        self.end_date.setCalendarPopup(True)
+        self.end_date = PersianDateEdit()
         self.end_date.setDate(QDate.currentDate())
-        filter_layout.addRow("تا تاریخ:", self.end_date)
+        filter_layout.addRow("تا تاریخ (شمسی):", self.end_date)
         
         self.status_filter = QComboBox()
         self.status_filter.addItems(["همه", "پرداخت شده", "در انتظار", "معوق"])

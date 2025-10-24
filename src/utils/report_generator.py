@@ -33,6 +33,7 @@ class ReportGenerator:
             pandas DataFrame with report data
         """
         from ..models import Installment, InsurancePolicy
+        from ..utils.persian_utils import PersianDateConverter
         
         query = self.session.query(
             Installment,
@@ -56,7 +57,7 @@ class ReportGenerator:
         # Execute query
         results = query.all()
         
-        # Convert to DataFrame
+        # Convert to DataFrame with Persian dates
         data = []
         for inst, policy_num, holder_name, policy_type in results:
             data.append({
@@ -65,8 +66,8 @@ class ReportGenerator:
                 'insurance_type': policy_type,
                 'installment_number': inst.installment_number,
                 'amount': inst.amount,
-                'due_date': inst.due_date,
-                'payment_date': inst.payment_date,
+                'due_date': PersianDateConverter.gregorian_to_jalali(inst.due_date) if inst.due_date else '',
+                'payment_date': PersianDateConverter.gregorian_to_jalali(inst.payment_date) if inst.payment_date else '',
                 'status': inst.status,
                 'payment_method': inst.payment_method
             })
@@ -106,14 +107,14 @@ class ReportGenerator:
         return pd.DataFrame(data)
     
     def generate_payment_statistics(self, start_date=None, end_date=None):
-        """Generate payment statistics report"""
+        """Generate payment statistics report with Persian dates"""
         from ..models import Installment
         from sqlalchemy import func
+        from ..utils.persian_utils import PersianDateConverter
+        from persiantools.jdatetime import JalaliDateTime
         
         query = self.session.query(
-            func.strftime('%Y-%m', Installment.payment_date).label('month'),
-            func.count(Installment.id).label('count'),
-            func.sum(Installment.amount).label('total')
+            Installment
         ).filter(
             Installment.status == 'paid'
         )
@@ -123,16 +124,28 @@ class ReportGenerator:
         if end_date:
             query = query.filter(Installment.payment_date <= end_date)
         
-        query = query.group_by('month').order_by('month')
-        
         results = query.all()
         
+        # Group by Persian month
+        monthly_data = {}
+        for inst in results:
+            if inst.payment_date:
+                jalali = JalaliDateTime.to_jalali(inst.payment_date)
+                month_key = f"{jalali.year}/{jalali.month:02d}"
+                
+                if month_key not in monthly_data:
+                    monthly_data[month_key] = {'count': 0, 'total': 0}
+                
+                monthly_data[month_key]['count'] += 1
+                monthly_data[month_key]['total'] += inst.amount
+        
+        # Convert to DataFrame
         data = []
-        for month, count, total in results:
+        for month, stats in sorted(monthly_data.items()):
             data.append({
                 'month': month,
-                'payment_count': count,
-                'total_amount': total or 0
+                'payment_count': stats['count'],
+                'total_amount': stats['total']
             })
         
         return pd.DataFrame(data)
