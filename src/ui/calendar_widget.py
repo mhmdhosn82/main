@@ -506,11 +506,23 @@ class CalendarWidget(QWidget):
         # Show installments for this date
         if date in self.installments_by_date:
             for inst, policy in self.installments_by_date[date]:
+                # Create detailed item text with all required information
+                status_persian = {
+                    'pending': 'در انتظار',
+                    'paid': 'پرداخت شده',
+                    'overdue': 'معوق',
+                    'cancelled': 'لغو شده'
+                }.get(inst.status, inst.status)
+                
                 item_text = (
-                    f"بیمه‌نامه {policy.policy_number} - "
-                    f"قسط {inst.installment_number} - "
-                    f"{format_currency(inst.amount)} - "
-                    f"وضعیت: {inst.status}"
+                    f"📄 شماره بیمه‌نامه: {policy.policy_number}\n"
+                    f"👤 نام بیمه‌گذار: {policy.policy_holder_name}\n"
+                    f"📋 نوع بیمه: {policy.policy_type or '-'}\n"
+                    f"💰 مبلغ: {format_currency(inst.amount)}\n"
+                    f"📱 شماره موبایل: {policy.mobile_number or '-'}\n"
+                    f"🔢 شماره قسط: {inst.installment_number}\n"
+                    f"📊 وضعیت: {status_persian}\n"
+                    f"{'-' * 50}"
                 )
                 self.installments_list.addItem(item_text)
         else:
