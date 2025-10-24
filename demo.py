@@ -6,175 +6,225 @@ This demonstrates how to use the API without the GUI.
 
 import sys
 import os
+from datetime import datetime, timedelta
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.database.db import get_database
-from src.models.models import InsurancePolicy
-from src.models.repository import PolicyRepository, InstallmentRepository
-from src.utils.helpers import generate_installments, get_current_jalali_date
-from src.utils.export import export_policies_to_excel, export_installments_to_excel
+from src.models import init_database, get_session, User, InsurancePolicy, Installment
+from src.controllers import AuthController, PolicyController, InstallmentController
+from src.utils.persian_utils import PersianDateConverter, format_currency
 
 
-def create_sample_data():
+def create_sample_data(session):
     """Create sample insurance policies and installments."""
-    db = get_database()
-    policy_repo = PolicyRepository(db)
-    installment_repo = InstallmentRepository(db)
-    
     print("Creating sample insurance policies...\n")
     
+    # Create a demo user if not exists
+    auth_ctrl = AuthController(session)
+    demo_user = session.query(User).filter_by(username='demo_user').first()
+    
+    if not demo_user:
+        success, message, demo_user = auth_ctrl.register_user(
+            username='demo_user',
+            password='demo123',
+            full_name='کاربر نمایشی',
+            email='demo@example.com',
+            phone='09123456789',
+            role='user'
+        )
+        if not success:
+            print(f"Error creating demo user: {message}")
+            return
+    
+    policy_ctrl = PolicyController(session)
+    installment_ctrl = InstallmentController(session)
+    
     # Sample policies
+    base_date = datetime.now()
     sample_policies = [
         {
             'policy_number': 'INS-001-1402',
-            'insured_name': 'علی احمدی',
-            'issuance_date': '1402/03/15',
-            'expiration_date': '1403/03/15',
-            'advance_payment': 5000000,
-            'total_installment_amount': 20000000,
-            'number_of_installments': 12
+            'policy_holder_name': 'علی احمدی',
+            'policy_holder_national_id': '1234567890',
+            'policy_type': 'Life',
+            'insurance_company': 'بیمه ایران',
+            'total_amount': 20000000,
+            'start_date': base_date,
+            'end_date': base_date + timedelta(days=365),
+            'description': 'بیمه عمر'
         },
         {
             'policy_number': 'INS-002-1402',
-            'insured_name': 'زهرا محمدی',
-            'issuance_date': '1402/05/10',
-            'expiration_date': '1403/05/10',
-            'advance_payment': 3000000,
-            'total_installment_amount': 15000000,
-            'number_of_installments': 10
+            'policy_holder_name': 'زهرا محمدی',
+            'policy_holder_national_id': '9876543210',
+            'policy_type': 'Health',
+            'insurance_company': 'بیمه ایران',
+            'total_amount': 15000000,
+            'start_date': base_date + timedelta(days=30),
+            'end_date': base_date + timedelta(days=395),
+            'description': 'بیمه درمان'
         },
         {
             'policy_number': 'INS-003-1402',
-            'insured_name': 'حسن رضایی',
-            'issuance_date': '1402/06/20',
-            'expiration_date': '1403/06/20',
-            'advance_payment': 7000000,
-            'total_installment_amount': 30000000,
-            'number_of_installments': 15
+            'policy_holder_name': 'حسن رضایی',
+            'policy_holder_national_id': '5555555555',
+            'policy_type': 'Auto',
+            'insurance_company': 'بیمه ایران',
+            'total_amount': 30000000,
+            'start_date': base_date + timedelta(days=60),
+            'end_date': base_date + timedelta(days=425),
+            'description': 'بیمه اتومبیل'
         }
     ]
     
     for policy_data in sample_policies:
-        # Create policy
-        policy = InsurancePolicy(**policy_data)
-        policy_id = policy_repo.create_policy(policy)
+        success, message, policy = policy_ctrl.create_policy(demo_user.id, policy_data)
         
-        print(f"Created policy: {policy.policy_number} - {policy.insured_name}")
-        print(f"  Policy ID: {policy_id}")
-        print(f"  Issuance Date: {policy.issuance_date}")
-        print(f"  Number of Installments: {policy.number_of_installments}")
-        
-        # Generate installments
-        installments = generate_installments(
-            policy_id,
-            policy.issuance_date,
-            policy.number_of_installments,
-            policy.total_installment_amount
-        )
-        
-        for inst in installments:
-            installment_repo.create_installment(inst)
-        
-        print(f"  Generated {len(installments)} installments\n")
-    
-    db.close()
-    print("Sample data created successfully!")
+        if success:
+            print(f"Created policy: {policy.policy_number} - {policy.policy_holder_name}")
+            print(f"  Policy ID: {policy.id}")
+            converter = PersianDateConverter()
+            jalali_date = converter.gregorian_to_jalali(policy.start_date)
+            print(f"  Start Date: {jalali_date}")
+            
+            # Create sample installments
+            num_installments = 12
+            installment_amount = policy.total_amount / num_installments
+            
+            for i in range(num_installments):
+                due_date = policy.start_date + timedelta(days=30 * (i + 1))
+                installment = Installment(
+                    policy_id=policy.id,
+                    installment_number=i + 1,
+                    amount=installment_amount,
+                    due_date=due_date,
+                    status='pending' if i > 0 else 'paid',
+                    payment_date=policy.start_date if i == 0 else None
+                )
+                session.add(installment)
+            
+            session.commit()
+            print(f"  Generated {num_installments} installments\n")
+        else:
+            print(f"Error creating policy: {message}\n")
 
 
-def display_statistics():
+def display_statistics(session):
     """Display statistics about policies and installments."""
-    db = get_database()
-    policy_repo = PolicyRepository(db)
+    policy_ctrl = PolicyController(session)
     
-    stats = policy_repo.get_statistics()
+    stats = policy_ctrl.get_policy_statistics()
     
     print("\n" + "="*60)
     print("Insurance Management Statistics")
     print("="*60)
-    print(f"Total Policies: {stats['total_policies']}")
-    print(f"Total Installments: {stats['total_installments']}")
-    print(f"Paid Installments: {stats['paid_installments']}")
-    print(f"Unpaid Installments: {stats['unpaid_installments']}")
+    print(f"Total Policies: {stats.get('total_policies', 0)}")
+    print(f"Active Policies: {stats.get('active_policies', 0)}")
+    print(f"Total Amount: {format_currency(stats.get('total_amount', 0))}")
     print("="*60 + "\n")
-    
-    db.close()
 
 
-def list_all_policies():
+def list_all_policies(session):
     """List all insurance policies."""
-    db = get_database()
-    policy_repo = PolicyRepository(db)
+    policy_ctrl = PolicyController(session)
     
-    policies = policy_repo.get_all_policies()
+    policies = policy_ctrl.get_all_policies()
     
     print("\n" + "="*60)
     print("All Insurance Policies")
     print("="*60)
     
+    converter = PersianDateConverter()
     for policy in policies:
         print(f"\nPolicy Number: {policy.policy_number}")
-        print(f"Insured Name: {policy.insured_name}")
-        print(f"Issuance Date: {policy.issuance_date}")
-        print(f"Expiration Date: {policy.expiration_date}")
-        print(f"Advance Payment: {policy.advance_payment:,.0f} Rials")
-        print(f"Total Installments: {policy.total_installment_amount:,.0f} Rials")
-        print(f"Number of Installments: {policy.number_of_installments}")
+        print(f"Policy Holder: {policy.policy_holder_name}")
+        print(f"Type: {policy.policy_type}")
+        print(f"Company: {policy.insurance_company}")
+        start_jalali = converter.gregorian_to_jalali(policy.start_date)
+        end_jalali = converter.gregorian_to_jalali(policy.end_date)
+        print(f"Start Date: {start_jalali}")
+        print(f"End Date: {end_jalali}")
+        print(f"Total Amount: {format_currency(policy.total_amount)}")
+        print(f"Status: {policy.status}")
         print("-" * 60)
-    
-    db.close()
 
 
-def show_upcoming_installments():
+def show_upcoming_installments(session):
     """Show upcoming installments."""
-    db = get_database()
-    installment_repo = InstallmentRepository(db)
+    installment_ctrl = InstallmentController(session)
     
-    current_date = get_current_jalali_date()
-    installments = installment_repo.get_due_installments()
+    # Get all pending installments
+    all_installments = session.query(Installment).filter(
+        Installment.status == 'pending'
+    ).order_by(Installment.due_date).limit(10).all()
     
     print("\n" + "="*60)
     print("Upcoming Unpaid Installments")
     print("="*60)
     
-    for inst in installments[:10]:  # Show first 10
-        print(f"\nPolicy: {inst['policy_number']} - {inst['insured_name']}")
-        print(f"Installment #{inst['installment_number']}")
-        print(f"Due Date: {inst['due_date']}")
-        print(f"Amount: {inst['amount']:,.0f} Rials")
-        print(f"Status: {inst['status']}")
+    converter = PersianDateConverter()
+    for inst in all_installments:
+        policy = session.get(InsurancePolicy, inst.policy_id)
+        print(f"\nPolicy: {policy.policy_number} - {policy.policy_holder_name}")
+        print(f"Installment #{inst.installment_number}")
+        due_jalali = converter.gregorian_to_jalali(inst.due_date)
+        print(f"Due Date: {due_jalali}")
+        print(f"Amount: {format_currency(inst.amount)}")
+        print(f"Status: {inst.status}")
         print("-" * 60)
-    
-    db.close()
 
 
-def export_reports():
-    """Export reports to Excel and PDF."""
-    db = get_database()
-    policy_repo = PolicyRepository(db)
-    installment_repo = InstallmentRepository(db)
+def export_reports(session):
+    """Export reports to Excel."""
+    from src.utils.export import export_to_excel
     
     print("\n" + "="*60)
     print("Exporting Reports")
     print("="*60)
     
     # Export policies
-    policies = policy_repo.get_all_policies()
-    policies_data = [p.to_dict() for p in policies]
+    policies = session.query(InsurancePolicy).all()
+    converter = PersianDateConverter()
     
-    export_policies_to_excel(policies_data, 'policies_report.xlsx')
-    print("✓ Exported policies to: policies_report.xlsx")
+    policies_data = []
+    for p in policies:
+        policies_data.append({
+            'شماره بیمه‌نامه': p.policy_number,
+            'نام بیمه‌شده': p.policy_holder_name,
+            'نوع بیمه': p.policy_type,
+            'شرکت بیمه': p.insurance_company,
+            'تاریخ شروع': converter.gregorian_to_jalali(p.start_date),
+            'تاریخ پایان': converter.gregorian_to_jalali(p.end_date),
+            'مبلغ کل': p.total_amount,
+            'وضعیت': p.status
+        })
+    
+    if policies_data:
+        export_to_excel(policies_data, 'policies_report.xlsx', 'بیمه‌نامه‌ها')
+        print("✓ Exported policies to: policies_report.xlsx")
     
     # Export installments
-    installments = installment_repo.get_due_installments()
+    installments = session.query(Installment).join(InsurancePolicy).all()
+    installments_data = []
     
-    export_installments_to_excel(installments, 'installments_report.xlsx')
-    print("✓ Exported installments to: installments_report.xlsx")
+    for inst in installments:
+        policy = session.get(InsurancePolicy, inst.policy_id)
+        installments_data.append({
+            'شماره بیمه‌نامه': policy.policy_number,
+            'نام بیمه‌شده': policy.policy_holder_name,
+            'شماره قسط': inst.installment_number,
+            'تاریخ سررسید': converter.gregorian_to_jalali(inst.due_date),
+            'مبلغ': inst.amount,
+            'وضعیت': inst.status,
+            'تاریخ پرداخت': converter.gregorian_to_jalali(inst.payment_date) if inst.payment_date else '-'
+        })
+    
+    if installments_data:
+        export_to_excel(installments_data, 'installments_report.xlsx', 'اقساط')
+        print("✓ Exported installments to: installments_report.xlsx")
     
     print("="*60 + "\n")
-    
-    db.close()
 
 
 def main():
@@ -183,25 +233,31 @@ def main():
     print("Iran Insurance Management System - Demo")
     print("="*60 + "\n")
     
-    # Check if database has data
-    db = get_database()
-    policy_repo = PolicyRepository(db)
-    stats = policy_repo.get_statistics()
-    db.close()
+    # Initialize database
+    init_database()
+    session = get_session()
     
-    if stats['total_policies'] == 0:
-        print("No data found. Creating sample data...")
-        create_sample_data()
-    
-    # Display information
-    display_statistics()
-    list_all_policies()
-    show_upcoming_installments()
-    export_reports()
-    
-    print("\nDemo completed successfully!")
-    print("\nTo run the GUI application, execute:")
-    print("    python main.py")
+    try:
+        # Check if database has data
+        policy_ctrl = PolicyController(session)
+        stats = policy_ctrl.get_policy_statistics()
+        
+        if stats['total_policies'] == 0:
+            print("No data found. Creating sample data...")
+            create_sample_data(session)
+        
+        # Display information
+        display_statistics(session)
+        list_all_policies(session)
+        show_upcoming_installments(session)
+        export_reports(session)
+        
+        print("\nDemo completed successfully!")
+        print("\nTo run the GUI application, execute:")
+        print("    python main.py")
+        
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
