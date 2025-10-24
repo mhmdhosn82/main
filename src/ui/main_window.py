@@ -136,6 +136,7 @@ class MainWindow(QMainWindow):
         sidebar = QFrame()
         sidebar.setMaximumWidth(220)
         sidebar.setMinimumWidth(220)
+        sidebar.setLayoutDirection(Qt.RightToLeft)
         sidebar.setStyleSheet("""
             QFrame {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -216,6 +217,7 @@ class MainWindow(QMainWindow):
     def create_sidebar_button(self, icon, text, tab_index):
         """Create a styled sidebar button"""
         btn = QPushButton(f"{icon}  {text}")
+        btn.setLayoutDirection(Qt.RightToLeft)
         btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -226,6 +228,7 @@ class MainWindow(QMainWindow):
                 border-radius: 5px;
                 font-size: 11pt;
                 margin: 0px 10px;
+                qproperty-layoutDirection: RightToLeft;
             }
             QPushButton:hover {
                 background: rgba(52, 152, 219, 0.3);
@@ -246,6 +249,7 @@ class MainWindow(QMainWindow):
         """Update sidebar button selection state"""
         for i, btn in enumerate(self.sidebar_buttons):
             if i == index:
+                btn.setLayoutDirection(Qt.RightToLeft)
                 btn.setStyleSheet("""
                     QPushButton {
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
@@ -258,6 +262,7 @@ class MainWindow(QMainWindow):
                         font-size: 11pt;
                         font-weight: bold;
                         margin: 0px 10px;
+                        qproperty-layoutDirection: RightToLeft;
                     }
                     QPushButton:hover {
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
@@ -265,6 +270,7 @@ class MainWindow(QMainWindow):
                     }
                 """)
             else:
+                btn.setLayoutDirection(Qt.RightToLeft)
                 btn.setStyleSheet("""
                     QPushButton {
                         background: transparent;
@@ -275,6 +281,7 @@ class MainWindow(QMainWindow):
                         border-radius: 5px;
                         font-size: 11pt;
                         margin: 0px 10px;
+                        qproperty-layoutDirection: RightToLeft;
                     }
                     QPushButton:hover {
                         background: rgba(52, 152, 219, 0.3);

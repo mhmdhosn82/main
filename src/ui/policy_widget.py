@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
 from PyQt5.QtCore import Qt, QDate
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from .persian_date_edit import PersianDateEdit
 import logging
 
 logger = logging.getLogger(__name__)
@@ -213,15 +214,11 @@ class AddPolicyDialog(QDialog):
         self.num_installments.addItems(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "18", "24", "36"])
         self.num_installments.setCurrentText("12")
         
-        self.start_date = QDateEdit()
-        self.start_date.setCalendarPopup(True)
+        self.start_date = PersianDateEdit()
         self.start_date.setDate(QDate.currentDate())
-        self.start_date.setDisplayFormat("yyyy/MM/dd")
         
-        self.end_date = QDateEdit()
-        self.end_date.setCalendarPopup(True)
+        self.end_date = PersianDateEdit()
         self.end_date.setDate(QDate.currentDate().addYears(1))
-        self.end_date.setDisplayFormat("yyyy/MM/dd")
         
         self.description = QTextEdit()
         self.description.setMaximumHeight(80)
@@ -260,7 +257,7 @@ class AddPolicyDialog(QDialog):
         
         # Validate mobile number
         mobile = self.mobile_number.text().strip()
-        if mobile and not mobile.startswith('09') or (mobile and len(mobile) != 11):
+        if mobile and (not mobile.startswith('09') or len(mobile) != 11):
             QMessageBox.warning(self, "خطا", "شماره موبایل باید با 09 شروع شده و 11 رقم باشد")
             return
         
@@ -268,9 +265,19 @@ class AddPolicyDialog(QDialog):
         down_payment = self.down_payment.value()
         num_installments = int(self.num_installments.currentText())
         
+        # Validate total amount
+        if total_amount <= 0:
+            QMessageBox.warning(self, "خطا", "مبلغ کل بیمه باید بیشتر از صفر باشد")
+            return
+        
         # Validate down payment
         if down_payment > total_amount:
             QMessageBox.warning(self, "خطا", "مبلغ پیش‌پرداخت نمی‌تواند بیشتر از مبلغ کل باشد")
+            return
+        
+        # Validate dates
+        if self.end_date.date() <= self.start_date.date():
+            QMessageBox.warning(self, "خطا", "تاریخ پایان باید بعد از تاریخ شروع باشد")
             return
         
         policy_data = {
