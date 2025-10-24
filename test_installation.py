@@ -80,9 +80,12 @@ def test_database():
             'policy_number': f'TEST-VERIFY-{datetime.now().timestamp()}',
             'policy_holder_name': 'بیمه‌شده تست',
             'policy_holder_national_id': '1234567890',
+            'mobile_number': '09123456789',
             'policy_type': 'Life',
             'insurance_company': 'بیمه ایران',
             'total_amount': 10000000,
+            'down_payment': 3000000,
+            'num_installments': 7,
             'start_date': test_date,
             'end_date': end_date,
             'description': 'بیمه‌نامه تست'
