@@ -1,9 +1,10 @@
 """Main application window with tabbed interface"""
 from PyQt5.QtWidgets import (QMainWindow, QTabWidget, QWidget, QVBoxLayout,
                             QMenuBar, QMenu, QAction, QStatusBar, QMessageBox,
-                            QLabel, QToolBar)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont, QIcon
+                            QLabel, QToolBar, QSplitter, QPushButton, QHBoxLayout,
+                            QListWidget, QListWidgetItem, QFrame)
+from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtGui import QFont, QIcon, QColor
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,29 +26,55 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1200, 700)
         self.setLayoutDirection(Qt.RightToLeft)
         
-        # Create central widget with tabs
+        # Apply modern stylesheet to main window
+        self.setStyleSheet("""
+            QMainWindow {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #f5f7fa, stop:1 #e8ecf1);
+            }
+        """)
+        
+        # Create central widget with splitter (sidebar + tabs)
+        central_widget = QWidget()
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Create sidebar
+        self.sidebar = self.create_sidebar()
+        
+        # Create tabs widget
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #bdc3c7;
-                border-radius: 5px;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                background: white;
+                margin-right: 5px;
             }
             QTabBar::tab {
-                background-color: #ecf0f1;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ecf0f1, stop:1 #d5dbdf);
                 color: #2c3e50;
-                padding: 10px 20px;
+                padding: 12px 25px;
                 margin: 2px;
-                border: 1px solid #bdc3c7;
+                border: 2px solid #bdc3c7;
                 border-bottom: none;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                font-weight: bold;
+                font-size: 11pt;
             }
             QTabBar::tab:selected {
-                background-color: #3498db;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #3498db, stop:1 #2980b9);
                 color: white;
+                border-color: #2980b9;
             }
             QTabBar::tab:hover {
-                background-color: #d6eaf8;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5dade2, stop:1 #3498db);
+                color: white;
             }
         """)
         
@@ -74,7 +101,15 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.reports_widget, "📈 گزارش‌ها")
         self.tabs.addTab(self.sms_widget, "📱 پیامک‌ها")
         
-        self.setCentralWidget(self.tabs)
+        # Connect tab changes to sidebar
+        self.tabs.currentChanged.connect(self.on_tab_changed)
+        
+        # Add sidebar and tabs to main layout
+        main_layout.addWidget(self.sidebar)
+        main_layout.addWidget(self.tabs, stretch=1)
+        
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
         
         # Setup menu bar
         self.setup_menu_bar()
@@ -86,6 +121,172 @@ class MainWindow(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
         self.statusBar.showMessage("آماده")
+        self.statusBar.setStyleSheet("""
+            QStatusBar {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2ecc71);
+                color: white;
+                font-weight: bold;
+                padding: 5px;
+            }
+        """)
+    
+    def create_sidebar(self):
+        """Create modern sidebar with navigation"""
+        sidebar = QFrame()
+        sidebar.setMaximumWidth(220)
+        sidebar.setMinimumWidth(220)
+        sidebar.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2c3e50, stop:1 #34495e);
+                border-left: 3px solid #3498db;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 20, 0, 20)
+        layout.setSpacing(5)
+        
+        # App title in sidebar
+        title_label = QLabel("سیستم مدیریت\nاقساط بیمه")
+        title_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 14pt;
+                font-weight: bold;
+                padding: 15px;
+                background: rgba(52, 152, 219, 0.3);
+                border-radius: 5px;
+                margin: 0px 10px;
+            }
+        """)
+        title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
+        
+        layout.addSpacing(20)
+        
+        # Navigation buttons
+        self.sidebar_buttons = []
+        nav_items = [
+            ("📊", "داشبورد", 0),
+            ("📋", "بیمه‌نامه‌ها", 1),
+            ("💰", "اقساط", 2),
+            ("📅", "تقویم اقساط", 3),
+            ("📈", "گزارش‌ها", 4),
+            ("📱", "پیامک‌ها", 5),
+        ]
+        
+        for icon, label, index in nav_items:
+            btn = self.create_sidebar_button(icon, label, index)
+            self.sidebar_buttons.append(btn)
+            layout.addWidget(btn)
+        
+        layout.addStretch()
+        
+        # User info at bottom
+        user_frame = QFrame()
+        user_frame.setStyleSheet("""
+            QFrame {
+                background: rgba(52, 152, 219, 0.2);
+                border-radius: 5px;
+                margin: 0px 10px;
+                padding: 10px;
+            }
+        """)
+        user_layout = QVBoxLayout()
+        
+        user_label = QLabel(f"👤 {self.user.full_name}")
+        user_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 10pt;
+                font-weight: bold;
+            }
+        """)
+        user_label.setAlignment(Qt.AlignCenter)
+        user_layout.addWidget(user_label)
+        
+        user_frame.setLayout(user_layout)
+        layout.addWidget(user_frame)
+        
+        sidebar.setLayout(layout)
+        return sidebar
+    
+    def create_sidebar_button(self, icon, text, tab_index):
+        """Create a styled sidebar button"""
+        btn = QPushButton(f"{icon}  {text}")
+        btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: white;
+                text-align: right;
+                padding: 15px 20px;
+                border: none;
+                border-radius: 5px;
+                font-size: 11pt;
+                margin: 0px 10px;
+            }
+            QPushButton:hover {
+                background: rgba(52, 152, 219, 0.3);
+            }
+            QPushButton:pressed {
+                background: rgba(52, 152, 219, 0.5);
+            }
+        """)
+        btn.clicked.connect(lambda: self.switch_to_tab(tab_index))
+        return btn
+    
+    def switch_to_tab(self, index):
+        """Switch to the specified tab"""
+        self.tabs.setCurrentIndex(index)
+        self.update_sidebar_selection(index)
+    
+    def update_sidebar_selection(self, index):
+        """Update sidebar button selection state"""
+        for i, btn in enumerate(self.sidebar_buttons):
+            if i == index:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                            stop:0 #3498db, stop:1 #2ecc71);
+                        color: white;
+                        text-align: right;
+                        padding: 15px 20px;
+                        border: none;
+                        border-radius: 5px;
+                        font-size: 11pt;
+                        font-weight: bold;
+                        margin: 0px 10px;
+                    }
+                    QPushButton:hover {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                            stop:0 #2ecc71, stop:1 #3498db);
+                    }
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: transparent;
+                        color: white;
+                        text-align: right;
+                        padding: 15px 20px;
+                        border: none;
+                        border-radius: 5px;
+                        font-size: 11pt;
+                        margin: 0px 10px;
+                    }
+                    QPushButton:hover {
+                        background: rgba(52, 152, 219, 0.3);
+                    }
+                    QPushButton:pressed {
+                        background: rgba(52, 152, 219, 0.5);
+                    }
+                """)
+    
+    def on_tab_changed(self, index):
+        """Handle tab change event"""
+        self.update_sidebar_selection(index)
     
     def setup_menu_bar(self):
         """Setup menu bar"""
@@ -127,19 +328,30 @@ class MainWindow(QMainWindow):
         toolbar = QToolBar()
         toolbar.setStyleSheet("""
             QToolBar {
-                background-color: #ecf0f1;
-                padding: 5px;
-                spacing: 5px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #ecf0f1, stop:1 #d5dbdf);
+                padding: 8px;
+                spacing: 8px;
+                border-bottom: 2px solid #3498db;
             }
             QToolButton {
-                background-color: #3498db;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #3498db, stop:1 #2980b9);
                 color: white;
-                padding: 8px 15px;
-                border-radius: 3px;
+                padding: 10px 18px;
+                border-radius: 5px;
                 font-weight: bold;
+                font-size: 10pt;
+                border: 2px solid #2980b9;
             }
             QToolButton:hover {
-                background-color: #2980b9;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5dade2, stop:1 #3498db);
+                border: 2px solid #3498db;
+            }
+            QToolButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2980b9, stop:1 #21618c);
             }
         """)
         
