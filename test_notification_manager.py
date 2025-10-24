@@ -10,9 +10,15 @@ class TestNotificationManagerWithoutPlyer(unittest.TestCase):
     
     def setUp(self):
         """Set up test by clearing module cache"""
+        self._clear_module_cache()
+    
+    def _clear_module_cache(self):
+        """Helper to clear src.utils modules from cache"""
         # Clear module cache to ensure fresh import
-        modules_to_clear = [mod for mod in sys.modules.keys() 
-                          if mod.startswith('src.utils')]
+        modules_to_clear = [
+            mod for mod in sys.modules.keys() 
+            if mod.startswith('src.utils')
+        ]
         for mod in modules_to_clear:
             del sys.modules[mod]
         if 'plyer' in sys.modules:
@@ -96,8 +102,14 @@ class TestNotificationManagerWithPlyer(unittest.TestCase):
     
     def setUp(self):
         """Set up test by clearing module cache"""
-        modules_to_clear = [mod for mod in sys.modules.keys() 
-                          if mod.startswith('src.utils')]
+        self._clear_module_cache()
+    
+    def _clear_module_cache(self):
+        """Helper to clear src.utils modules from cache"""
+        modules_to_clear = [
+            mod for mod in sys.modules.keys() 
+            if mod.startswith('src.utils')
+        ]
         for mod in modules_to_clear:
             del sys.modules[mod]
         if 'plyer' in sys.modules:
