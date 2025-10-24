@@ -142,7 +142,7 @@ class PersianCalendarWidget(QWidget):
             days_in_month = 30
         else:
             # Esfand - check for leap year
-            days_in_month = 30 if first_day.is_leap() else 29
+            days_in_month = 30 if JalaliDate.is_leap(self.current_jalali.year) else 29
         
         # Update day buttons
         day = 1
