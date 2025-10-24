@@ -1,9 +1,16 @@
 """Desktop notification manager"""
-from plyer import notification
 import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+# Try to import plyer, but gracefully handle if it's not available
+try:
+    from plyer import notification
+    PLYER_AVAILABLE = True
+except ImportError:
+    PLYER_AVAILABLE = False
+    logger.warning("plyer module not available - notifications will be disabled")
 
 class NotificationManager:
     """Manage desktop notifications"""
@@ -11,9 +18,19 @@ class NotificationManager:
     def __init__(self):
         self.app_name = "Iran Insurance Manager"
         self.app_icon = None  # Can be set to icon path
+        self.enabled = PLYER_AVAILABLE
+    
+    @property
+    def is_available(self):
+        """Check if notifications are available"""
+        return PLYER_AVAILABLE
     
     def send_notification(self, title, message, timeout=10):
         """Send a desktop notification"""
+        if not PLYER_AVAILABLE:
+            logger.info(f"Notification skipped (plyer not available): {title}")
+            return False
+        
         try:
             notification.notify(
                 title=title,
