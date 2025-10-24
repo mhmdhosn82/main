@@ -59,6 +59,10 @@ class ReportsWidget(QWidget):
         self.status_filter.addItems(["همه", "پرداخت شده", "در انتظار", "معوق"])
         filter_layout.addRow("وضعیت:", self.status_filter)
         
+        self.insurance_type_filter = QComboBox()
+        self.insurance_type_filter.addItems(["همه", "شخص ثالث", "بدنه", "عمر", "حوادث", "آتش‌سوزی"])
+        filter_layout.addRow("نوع بیمه:", self.insurance_type_filter)
+        
         filter_group.setLayout(filter_layout)
         layout.addWidget(filter_group)
         
@@ -118,6 +122,7 @@ class ReportsWidget(QWidget):
             start_date = self.start_date.date().toPyDate()
             end_date = self.end_date.date().toPyDate()
             status = self.status_filter.currentText()
+            insurance_type = self.insurance_type_filter.currentText()
             
             # Map status
             status_map = {
@@ -128,6 +133,9 @@ class ReportsWidget(QWidget):
             }
             status_filter = status_map.get(status)
             
+            # Map insurance type
+            insurance_type_filter = None if insurance_type == "همه" else insurance_type
+            
             # Generate report
             report_gen = ReportGenerator(self.session)
             
@@ -135,7 +143,8 @@ class ReportsWidget(QWidget):
                 df = report_gen.generate_installment_report(
                     start_date=start_date,
                     end_date=end_date,
-                    status=status_filter
+                    status=status_filter,
+                    insurance_type=insurance_type_filter
                 )
             elif "بیمه‌نامه" in report_type:
                 df = report_gen.generate_policy_summary(self.user.id)

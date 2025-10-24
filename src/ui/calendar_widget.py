@@ -1,7 +1,7 @@
 """Calendar widget for installments"""
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QCalendarWidget, QLabel,
                             QListWidget, QHBoxLayout, QMessageBox, QGridLayout,
-                            QPushButton, QFrame)
+                            QPushButton, QFrame, QComboBox, QLineEdit)
 from PyQt5.QtCore import Qt, QDate, pyqtSignal
 from PyQt5.QtGui import QTextCharFormat, QColor, QFont
 from datetime import datetime
@@ -264,6 +264,57 @@ class CalendarWidget(QWidget):
         """)
         layout.addWidget(title)
         
+        # Filters section
+        filters_frame = QFrame()
+        filters_frame.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
+        filters_layout = QHBoxLayout()
+        
+        # Insurance type filter
+        filters_layout.addWidget(QLabel("نوع بیمه:"))
+        self.insurance_type_filter = QComboBox()
+        self.insurance_type_filter.addItems(["همه", "شخص ثالث", "بدنه", "عمر", "حوادث", "آتش‌سوزی"])
+        self.insurance_type_filter.currentTextChanged.connect(self.apply_filters)
+        filters_layout.addWidget(self.insurance_type_filter)
+        
+        # Status filter
+        filters_layout.addWidget(QLabel("وضعیت:"))
+        self.status_filter = QComboBox()
+        self.status_filter.addItems(["همه", "در انتظار", "پرداخت شده", "معوق"])
+        self.status_filter.currentTextChanged.connect(self.apply_filters)
+        filters_layout.addWidget(self.status_filter)
+        
+        # Policy number filter
+        filters_layout.addWidget(QLabel("شماره بیمه‌نامه:"))
+        self.policy_number_filter = QLineEdit()
+        self.policy_number_filter.setPlaceholderText("جستجو...")
+        self.policy_number_filter.textChanged.connect(self.apply_filters)
+        filters_layout.addWidget(self.policy_number_filter)
+        
+        # Reset filters button
+        reset_btn = QPushButton("حذف فیلترها")
+        reset_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                padding: 5px 15px;
+                border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #c0392b; }
+        """)
+        reset_btn.clicked.connect(self.reset_filters)
+        filters_layout.addWidget(reset_btn)
+        
+        filters_layout.addStretch()
+        filters_frame.setLayout(filters_layout)
+        layout.addWidget(filters_frame)
+        
         content_layout = QHBoxLayout()
         
         # Persian Calendar
@@ -362,10 +413,31 @@ class CalendarWidget(QWidget):
         from ..models import InsurancePolicy, Installment
         
         try:
-            # Get all installments
-            installments = self.session.query(Installment, InsurancePolicy).join(
+            # Build query with filters
+            query = self.session.query(Installment, InsurancePolicy).join(
                 InsurancePolicy
-            ).filter(InsurancePolicy.user_id == self.user.id).all()
+            ).filter(InsurancePolicy.user_id == self.user.id)
+            
+            # Apply insurance type filter
+            if hasattr(self, 'insurance_type_filter') and self.insurance_type_filter.currentText() != "همه":
+                query = query.filter(InsurancePolicy.policy_type == self.insurance_type_filter.currentText())
+            
+            # Apply status filter
+            if hasattr(self, 'status_filter') and self.status_filter.currentText() != "همه":
+                status_map = {
+                    "در انتظار": "pending",
+                    "پرداخت شده": "paid",
+                    "معوق": "overdue"
+                }
+                status = status_map.get(self.status_filter.currentText())
+                if status:
+                    query = query.filter(Installment.status == status)
+            
+            # Apply policy number filter
+            if hasattr(self, 'policy_number_filter') and self.policy_number_filter.text():
+                query = query.filter(InsurancePolicy.policy_number.like(f'%{self.policy_number_filter.text()}%'))
+            
+            installments = query.all()
             
             # Group by date
             self.installments_by_date = {}
@@ -443,6 +515,17 @@ class CalendarWidget(QWidget):
                 self.installments_list.addItem(item_text)
         else:
             self.installments_list.addItem("قسطی برای این تاریخ ثبت نشده است")
+    
+    def apply_filters(self):
+        """Apply filters and reload installments"""
+        self.load_installments()
+    
+    def reset_filters(self):
+        """Reset all filters"""
+        self.insurance_type_filter.setCurrentText("همه")
+        self.status_filter.setCurrentText("همه")
+        self.policy_number_filter.clear()
+        self.load_installments()
     
     def refresh(self):
         """Refresh calendar"""
