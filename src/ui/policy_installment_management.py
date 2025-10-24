@@ -1,7 +1,7 @@
 """Policy installment management dialog"""
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTableWidget,
                             QTableWidgetItem, QPushButton, QLabel, QMessageBox,
-                            QGroupBox, QFormLayout)
+                            QGroupBox, QFormLayout, QWidget)
 from PyQt5.QtCore import Qt
 from datetime import datetime
 import logging
