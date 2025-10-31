@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
         from .dashboard_widget import DashboardWidget
         from .policy_widget import PolicyWidget
         from .installment_widget import InstallmentWidget
+        from .overdue_installments_widget import OverdueInstallmentsWidget
         from .calendar_widget import CalendarWidget
         from .reports_widget import ReportsWidget
         from .sms_widget import SMSWidget
@@ -89,6 +90,7 @@ class MainWindow(QMainWindow):
         self.dashboard = DashboardWidget(self.user, self.session)
         self.policy_widget = PolicyWidget(self.user, self.session)
         self.installment_widget = InstallmentWidget(self.user, self.session)
+        self.overdue_widget = OverdueInstallmentsWidget(self.user, self.session)
         self.calendar_widget = CalendarWidget(self.user, self.session)
         self.reports_widget = ReportsWidget(self.user, self.session)
         self.sms_widget = SMSWidget(self.user, self.session)
@@ -97,6 +99,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.dashboard, "📊 داشبورد")
         self.tabs.addTab(self.policy_widget, "📋 بیمه‌نامه‌ها")
         self.tabs.addTab(self.installment_widget, "💰 اقساط")
+        self.tabs.addTab(self.overdue_widget, "⚠️ اقساط معوق")
         self.tabs.addTab(self.calendar_widget, "📅 تقویم اقساط")
         self.tabs.addTab(self.reports_widget, "📈 گزارش‌ها")
         self.tabs.addTab(self.sms_widget, "📱 پیامک‌ها")
@@ -173,9 +176,10 @@ class MainWindow(QMainWindow):
             ("📊", "داشبورد", 0),
             ("📋", "بیمه‌نامه‌ها", 1),
             ("💰", "اقساط", 2),
-            ("📅", "تقویم اقساط", 3),
-            ("📈", "گزارش‌ها", 4),
-            ("📱", "پیامک‌ها", 5),
+            ("⚠️", "اقساط معوق", 3),
+            ("📅", "تقویم اقساط", 4),
+            ("📈", "گزارش‌ها", 5),
+            ("📱", "پیامک‌ها", 6),
         ]
         
         for icon, label, index in nav_items:
@@ -421,6 +425,7 @@ class MainWindow(QMainWindow):
             self.dashboard.refresh()
             self.policy_widget.refresh()
             self.installment_widget.refresh()
+            self.overdue_widget.refresh()
             self.calendar_widget.refresh()
             self.statusBar.showMessage("بروزرسانی انجام شد", 3000)
         except Exception as e:

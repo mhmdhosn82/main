@@ -1,7 +1,7 @@
 """Installment management widget"""
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                             QTableWidgetItem, QPushButton, QLabel, QMessageBox,
-                            QComboBox, QLineEdit, QDateEdit, QGroupBox, QGridLayout)
+                            QComboBox, QLineEdit, QGroupBox, QGridLayout)
 from PyQt5.QtCore import Qt, QDate
 from datetime import datetime, timedelta
 import logging
@@ -69,23 +69,20 @@ class InstallmentWidget(QWidget):
         filters_layout.addWidget(date_filter_label, 0, 0)
         filters_layout.addWidget(self.date_filter, 0, 1)
         
-        # Custom date range (initially hidden)
-        self.start_date_label = QLabel("از تاریخ:")
-        self.start_date = QDateEdit()
-        self.start_date.setCalendarPopup(True)
+        # Custom date range (initially hidden) - Using Persian calendar
+        from .persian_date_edit import PersianDateEdit
+        self.start_date_label = QLabel("از تاریخ (شمسی):")
+        self.start_date = PersianDateEdit()
         self.start_date.setDate(QDate.currentDate())
-        self.start_date.setDisplayFormat("yyyy/MM/dd")
         self.start_date.dateChanged.connect(self.apply_filters)
         self.start_date_label.hide()
         self.start_date.hide()
         filters_layout.addWidget(self.start_date_label, 0, 2)
         filters_layout.addWidget(self.start_date, 0, 3)
         
-        self.end_date_label = QLabel("تا تاریخ:")
-        self.end_date = QDateEdit()
-        self.end_date.setCalendarPopup(True)
+        self.end_date_label = QLabel("تا تاریخ (شمسی):")
+        self.end_date = PersianDateEdit()
         self.end_date.setDate(QDate.currentDate().addMonths(1))
-        self.end_date.setDisplayFormat("yyyy/MM/dd")
         self.end_date.dateChanged.connect(self.apply_filters)
         self.end_date_label.hide()
         self.end_date.hide()

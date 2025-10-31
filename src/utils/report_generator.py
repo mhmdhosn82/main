@@ -57,19 +57,19 @@ class ReportGenerator:
         # Execute query
         results = query.all()
         
-        # Convert to DataFrame with Persian dates
+        # Convert to DataFrame with Persian headers and dates
         data = []
         for inst, policy_num, holder_name, policy_type in results:
             data.append({
-                'policy_number': policy_num,
-                'policy_holder': holder_name,
-                'insurance_type': policy_type,
-                'installment_number': inst.installment_number,
-                'amount': inst.amount,
-                'due_date': PersianDateConverter.gregorian_to_jalali(inst.due_date) if inst.due_date else '',
-                'payment_date': PersianDateConverter.gregorian_to_jalali(inst.payment_date) if inst.payment_date else '',
-                'status': inst.status,
-                'payment_method': inst.payment_method
+                'شماره بیمه‌نامه': policy_num,
+                'نام بیمه‌گذار': holder_name,
+                'نوع بیمه': policy_type,
+                'شماره قسط': inst.installment_number,
+                'مبلغ': inst.amount,
+                'تاریخ سررسید': PersianDateConverter.gregorian_to_jalali(inst.due_date) if inst.due_date else '',
+                'تاریخ پرداخت': PersianDateConverter.gregorian_to_jalali(inst.payment_date) if inst.payment_date else '',
+                'وضعیت': inst.status,
+                'روش پرداخت': inst.payment_method
             })
         
         return pd.DataFrame(data)
@@ -94,14 +94,14 @@ class ReportGenerator:
         data = []
         for policy, total_inst, paid, pending in results:
             data.append({
-                'policy_number': policy.policy_number,
-                'policy_holder': policy.policy_holder_name,
-                'policy_type': policy.policy_type,
-                'total_amount': policy.total_amount,
-                'total_installments': total_inst or 0,
-                'total_paid': paid or 0,
-                'total_pending': pending or 0,
-                'status': policy.status
+                'شماره بیمه‌نامه': policy.policy_number,
+                'نام بیمه‌گذار': policy.policy_holder_name,
+                'نوع بیمه': policy.policy_type,
+                'مبلغ کل': policy.total_amount,
+                'تعداد اقساط': total_inst or 0,
+                'مجموع پرداخت شده': paid or 0,
+                'مجموع باقی‌مانده': pending or 0,
+                'وضعیت': policy.status
             })
         
         return pd.DataFrame(data)
@@ -139,13 +139,13 @@ class ReportGenerator:
                 monthly_data[month_key]['count'] += 1
                 monthly_data[month_key]['total'] += inst.amount
         
-        # Convert to DataFrame
+        # Convert to DataFrame with Persian headers
         data = []
         for month, stats in sorted(monthly_data.items()):
             data.append({
-                'month': month,
-                'payment_count': stats['count'],
-                'total_amount': stats['total']
+                'ماه': month,
+                'تعداد پرداخت‌ها': stats['count'],
+                'مجموع مبلغ': stats['total']
             })
         
         return pd.DataFrame(data)

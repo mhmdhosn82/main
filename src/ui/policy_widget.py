@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt, QDate
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from .persian_date_edit import PersianDateEdit
+from ..controllers import PolicyController
 import logging
 
 logger = logging.getLogger(__name__)
@@ -62,10 +63,10 @@ class PolicyWidget(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
             "شماره بیمه‌نامه", "بیمه‌گذار", "نوع", "شرکت بیمه",
-            "مبلغ کل", "وضعیت", "عملیات"
+            "مبلغ کل", "وضعیت", "عملیات", "حذف"
         ])
         self.table.setLayoutDirection(Qt.RightToLeft)
         self.table.setStyleSheet("""
@@ -128,6 +129,20 @@ class PolicyWidget(QWidget):
                 
                 btn_widget.setLayout(btn_layout)
                 self.table.setCellWidget(row, 6, btn_widget)
+                
+                # Delete button
+                delete_btn = QPushButton("حذف")
+                delete_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #e74c3c;
+                        color: white;
+                        padding: 5px 10px;
+                        border-radius: 3px;
+                    }
+                    QPushButton:hover { background-color: #c0392b; }
+                """)
+                delete_btn.clicked.connect(lambda checked, p=policy: self.delete_policy(p))
+                self.table.setCellWidget(row, 7, delete_btn)
             
             self.table.resizeColumnsToContents()
             
@@ -159,6 +174,28 @@ class PolicyWidget(QWidget):
         from .policy_installment_management import PolicyInstallmentDialog
         dialog = PolicyInstallmentDialog(policy, self.session, self)
         dialog.exec_()
+    
+    def delete_policy(self, policy):
+        """Delete policy after confirmation"""
+        
+        reply = QMessageBox.question(
+            self,
+            'تأیید حذف',
+            f'آیا از حذف بیمه‌نامه "{policy.policy_number}" اطمینان دارید؟\n'
+            f'این عملیات تمام اقساط مربوط به این بیمه‌نامه را نیز حذف می‌کند.',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            controller = PolicyController(self.session)
+            success, message = controller.delete_policy(policy.id)
+            
+            if success:
+                QMessageBox.information(self, "موفق", message)
+                self.load_policies()
+            else:
+                QMessageBox.warning(self, "خطا", message)
     
     def search_policies(self, text):
         """Search policies"""
@@ -198,7 +235,7 @@ class AddPolicyDialog(QDialog):
         self.mobile_number.setPlaceholderText("مثال: 09123456789")
         
         self.policy_type = QComboBox()
-        self.policy_type.addItems(["شخص ثالث", "بدنه", "عمر", "حوادث", "آتش‌سوزی"])
+        self.policy_type.addItems(["شخص ثالث", "بدنه", "عمر", "حوادث", "آتش‌سوزی", "مسئولیت"])
         
         self.total_amount = QDoubleSpinBox()
         self.total_amount.setMaximum(999999999999)
