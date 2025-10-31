@@ -48,9 +48,10 @@ def load_vazir_font():
                 if font_families:
                     logger.info(f"Successfully loaded font: {font_file} ({font_families[0]})")
                     font_loaded = True
-                    # Store the actual font family name (e.g., "Vazirmatn")
+                    # Store the actual font family name (e.g., "Vazirmatn") from the first loaded font
                     if font_family_name is None:
                         font_family_name = font_families[0]
+                        # We have the font family name, but continue loading other weights
             else:
                 logger.warning(f"Failed to load font: {font_file}")
         else:

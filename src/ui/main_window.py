@@ -392,8 +392,10 @@ class MainWindow(QMainWindow):
         # even if called directly without going through main.py
         
         # Get the base directory of the project (main folder)
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        assets_dir = os.path.join(base_dir, 'assets')
+        # Navigate up from src/ui/main_window.py to the project root
+        current_file = os.path.abspath(__file__)
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+        assets_dir = os.path.join(project_root, 'assets')
         
         # Check if Vazir font is already loaded
         available_fonts = QFontDatabase().families()

@@ -103,9 +103,6 @@ def main():
     app.processEvents()
     
     # Save screenshot
-    from PyQt5.QtWidgets import QApplication
-    from PyQt5.QtGui import QPixmap
-    
     pixmap = window.grab()
     screenshot_path = os.path.join(base_dir, 'vazir_font_demo.png')
     pixmap.save(screenshot_path)
