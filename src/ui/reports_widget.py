@@ -59,7 +59,7 @@ class ReportsWidget(QWidget):
         filter_layout.addRow("وضعیت:", self.status_filter)
         
         self.insurance_type_filter = QComboBox()
-        self.insurance_type_filter.addItems(["همه", "شخص ثالث", "بدنه", "عمر", "حوادث", "آتش‌سوزی"])
+        self.insurance_type_filter.addItems(["همه", "شخص ثالث", "بدنه", "عمر", "حوادث", "آتش‌سوزی", "مسئولیت"])
         filter_layout.addRow("نوع بیمه:", self.insurance_type_filter)
         
         filter_group.setLayout(filter_layout)

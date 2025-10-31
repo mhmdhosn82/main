@@ -136,6 +136,9 @@ class InstallmentController:
             if policy:
                 notif = NotificationManager()
                 notif.send_payment_confirmation(policy.policy_number, installment.amount)
+                
+                # Check if all installments are paid, then auto-delete policy
+                self._check_and_delete_policy_if_all_paid(policy.id)
             
             return True, "قسط به عنوان پرداخت شده ثبت شد"
             
@@ -143,6 +146,39 @@ class InstallmentController:
             logger.error(f"Payment marking error: {e}")
             self.session.rollback()
             return False, f"خطا در ثبت پرداخت: {str(e)}"
+    
+    def _check_and_delete_policy_if_all_paid(self, policy_id):
+        """Check if all installments are paid and delete policy automatically"""
+        from ..models import Installment, InsurancePolicy
+        
+        try:
+            # Get all installments for this policy
+            installments = self.session.query(Installment).filter(
+                Installment.policy_id == policy_id
+            ).all()
+            
+            # Check if there are any installments
+            if not installments:
+                return
+            
+            # Check if all installments are paid
+            all_paid = all(inst.status == 'paid' for inst in installments)
+            
+            if all_paid:
+                # Delete the policy (cascade will delete installments too)
+                policy = self.session.query(InsurancePolicy).filter(
+                    InsurancePolicy.id == policy_id
+                ).first()
+                
+                if policy:
+                    policy_number = policy.policy_number
+                    self.session.delete(policy)
+                    self.session.commit()
+                    logger.info(f"Policy {policy_number} auto-deleted: all installments paid")
+        
+        except Exception as e:
+            logger.error(f"Error checking/deleting policy: {e}")
+            self.session.rollback()
     
     def get_installment(self, installment_id):
         """Get installment by ID"""
