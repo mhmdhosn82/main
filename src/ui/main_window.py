@@ -397,9 +397,14 @@ class MainWindow(QMainWindow):
         
         # Check if Vazir font is already loaded
         available_fonts = QFontDatabase().families()
-        vazir_available = any('Vazir' in font for font in available_fonts)
+        # Check for Vazirmatn (the actual font family name) or similar Vazir fonts
+        vazir_font = None
+        for font in available_fonts:
+            if 'Vazir' in font:
+                vazir_font = font
+                break
         
-        if not vazir_available:
+        if not vazir_font:
             # Load Vazir fonts from assets folder if not already loaded
             font_files = [
                 'Vazir-Regular.ttf',
@@ -416,13 +421,14 @@ class MainWindow(QMainWindow):
                         font_families = QFontDatabase.applicationFontFamilies(font_id)
                         if font_families:
                             logger.info(f"Successfully loaded font in MainWindow: {font_file}")
-                            vazir_available = True
+                            vazir_font = font_families[0]
+                            break
         
         # Apply Vazir font if available, otherwise fallback to system default
-        if vazir_available:
-            font = QFont("Vazir", 10)
+        if vazir_font:
+            font = QFont(vazir_font, 10)
             self.setFont(font)
-            logger.info("Vazir font applied to main window")
+            logger.info(f"Vazir font ({vazir_font}) applied to main window")
         else:
             # Fallback to a common Persian-supporting font
             font = QFont("Tahoma", 10)

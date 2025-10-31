@@ -36,6 +36,7 @@ def load_vazir_font():
     ]
     
     font_loaded = False
+    font_family_name = None
     
     # Try to load Vazir fonts from assets folder
     for font_file in font_files:
@@ -47,12 +48,15 @@ def load_vazir_font():
                 if font_families:
                     logger.info(f"Successfully loaded font: {font_file} ({font_families[0]})")
                     font_loaded = True
+                    # Store the actual font family name (e.g., "Vazirmatn")
+                    if font_family_name is None:
+                        font_family_name = font_families[0]
             else:
                 logger.warning(f"Failed to load font: {font_file}")
         else:
             logger.warning(f"Font file not found: {font_path}")
     
-    return font_loaded
+    return font_loaded, font_family_name
 
 def create_default_user_if_needed(session):
     """Create default admin user if no users exist"""
@@ -94,10 +98,11 @@ def main():
         
         # Load and apply Vazir font globally
         logger.info("Loading Vazir font...")
-        if load_vazir_font():
-            font = QFont("Vazir", 10)
+        font_loaded, font_family_name = load_vazir_font()
+        if font_loaded and font_family_name:
+            font = QFont(font_family_name, 10)
             app.setFont(font)
-            logger.info("Vazir font applied globally to application")
+            logger.info(f"Vazir font ({font_family_name}) applied globally to application")
         else:
             # Fallback to Tahoma for Persian support
             font = QFont("Tahoma", 10)
