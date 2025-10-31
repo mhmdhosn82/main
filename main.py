@@ -1,8 +1,10 @@
 """Main application entry point"""
 import sys
 import logging
+import os
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QFontDatabase
 from src.models import init_database, get_session, User
 from src.controllers import AuthController
 from src.ui import LoginDialog, MainWindow
@@ -18,6 +20,39 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+def load_vazir_font():
+    """Load Vazir font from assets folder and apply globally"""
+    # Get the base directory of the project
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    assets_dir = os.path.join(base_dir, 'assets')
+    
+    # List of Vazir font files to load
+    font_files = [
+        'Vazir-Regular.ttf',
+        'Vazir-Bold.ttf',
+        'Vazir-Medium.ttf',
+        'Vazir-Light.ttf'
+    ]
+    
+    font_loaded = False
+    
+    # Try to load Vazir fonts from assets folder
+    for font_file in font_files:
+        font_path = os.path.join(assets_dir, font_file)
+        if os.path.exists(font_path):
+            font_id = QFontDatabase.addApplicationFont(font_path)
+            if font_id != -1:
+                font_families = QFontDatabase.applicationFontFamilies(font_id)
+                if font_families:
+                    logger.info(f"Successfully loaded font: {font_file} ({font_families[0]})")
+                    font_loaded = True
+            else:
+                logger.warning(f"Failed to load font: {font_file}")
+        else:
+            logger.warning(f"Font file not found: {font_path}")
+    
+    return font_loaded
 
 def create_default_user_if_needed(session):
     """Create default admin user if no users exist"""
@@ -56,6 +91,18 @@ def main():
         
         # Set application style
         app.setStyle('Fusion')
+        
+        # Load and apply Vazir font globally
+        logger.info("Loading Vazir font...")
+        if load_vazir_font():
+            font = QFont("Vazir", 10)
+            app.setFont(font)
+            logger.info("Vazir font applied globally to application")
+        else:
+            # Fallback to Tahoma for Persian support
+            font = QFont("Tahoma", 10)
+            app.setFont(font)
+            logger.warning("Vazir font not available, using Tahoma as fallback")
         
         logger.info("Starting Iran Insurance Installment Management System")
         
