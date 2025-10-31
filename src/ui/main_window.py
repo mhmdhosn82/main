@@ -4,8 +4,9 @@ from PyQt5.QtWidgets import (QMainWindow, QTabWidget, QWidget, QVBoxLayout,
                             QLabel, QToolBar, QSplitter, QPushButton, QHBoxLayout,
                             QListWidget, QListWidgetItem, QFrame)
 from PyQt5.QtCore import Qt, QTimer, QSize
-from PyQt5.QtGui import QFont, QIcon, QColor
+from PyQt5.QtGui import QFont, QIcon, QColor, QFontDatabase
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -386,15 +387,55 @@ class MainWindow(QMainWindow):
     
     def apply_vazir_font(self):
         """Apply Vazir font for better Persian text display"""
-        # Try to load Vazir font, fallback to system default
-        try:
-            font = QFont("Vazir", 10)
+        # Note: Fonts are already loaded globally in main.py
+        # This method ensures the font is applied to the main window
+        # even if called directly without going through main.py
+        
+        # Get the base directory of the project (main folder)
+        # Navigate up from src/ui/main_window.py to the project root
+        current_file = os.path.abspath(__file__)
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+        assets_dir = os.path.join(project_root, 'assets')
+        
+        # Check if Vazir font is already loaded
+        available_fonts = QFontDatabase().families()
+        # Check for Vazirmatn (the actual font family name) or similar Vazir fonts
+        vazir_font = None
+        for font in available_fonts:
+            if 'Vazir' in font:
+                vazir_font = font
+                break
+        
+        if not vazir_font:
+            # Load Vazir fonts from assets folder if not already loaded
+            font_files = [
+                'Vazir-Regular.ttf',
+                'Vazir-Bold.ttf',
+                'Vazir-Medium.ttf',
+                'Vazir-Light.ttf'
+            ]
+            
+            for font_file in font_files:
+                font_path = os.path.join(assets_dir, font_file)
+                if os.path.exists(font_path):
+                    font_id = QFontDatabase.addApplicationFont(font_path)
+                    if font_id != -1:
+                        font_families = QFontDatabase.applicationFontFamilies(font_id)
+                        if font_families:
+                            logger.info(f"Successfully loaded font in MainWindow: {font_file}")
+                            vazir_font = font_families[0]
+                            break
+        
+        # Apply Vazir font if available, otherwise fallback to system default
+        if vazir_font:
+            font = QFont(vazir_font, 10)
             self.setFont(font)
-        except:
+            logger.info(f"Vazir font ({vazir_font}) applied to main window")
+        else:
             # Fallback to a common Persian-supporting font
             font = QFont("Tahoma", 10)
             self.setFont(font)
-            logger.warning("Vazir font not found, using Tahoma as fallback")
+            logger.warning("Vazir font not available, using Tahoma as fallback")
     
     def setup_reminder_timer(self):
         """Setup timer for checking reminders"""
