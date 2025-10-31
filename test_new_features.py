@@ -13,6 +13,7 @@ from src.models.installment import Installment
 from src.controllers.policy_controller import PolicyController
 from src.controllers.installment_controller import InstallmentController
 from src.utils.report_generator import ReportGenerator
+from src.ui.overdue_installments_widget import OVERDUE_THRESHOLD_DAYS
 import bcrypt
 
 def test_features():
@@ -71,8 +72,8 @@ def test_features():
     assert len(installments) == 4, "Should create 4 installments"
     print("✓ Test 3: Installments created successfully")
     
-    # Test 4: Create overdue installment (>1 month past due)
-    overdue_date = datetime.now() - timedelta(days=45)
+    # Test 4: Create overdue installment (>OVERDUE_THRESHOLD_DAYS days past due)
+    overdue_date = datetime.now() - timedelta(days=OVERDUE_THRESHOLD_DAYS + 15)
     overdue_installment = Installment(
         policy_id=policy.id,
         installment_number=5,
@@ -83,10 +84,10 @@ def test_features():
     session.add(overdue_installment)
     session.commit()
     
-    # Query overdue installments
-    one_month_ago = datetime.now() - timedelta(days=30)
+    # Query overdue installments using the same constant
+    threshold_date = datetime.now() - timedelta(days=OVERDUE_THRESHOLD_DAYS)
     overdue = session.query(Installment).filter(
-        Installment.due_date < one_month_ago,
+        Installment.due_date < threshold_date,
         Installment.status.in_(['pending', 'overdue'])
     ).all()
     assert len(overdue) >= 1, "Should have at least one overdue installment"

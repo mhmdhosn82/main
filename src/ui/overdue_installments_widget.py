@@ -6,7 +6,14 @@ from PyQt5.QtCore import Qt
 from datetime import datetime, timedelta
 import logging
 
+from ..models import Installment, InsurancePolicy
+from ..utils.persian_utils import format_currency, PersianDateConverter
+from ..controllers import InstallmentController
+
 logger = logging.getLogger(__name__)
+
+# Constant for overdue threshold
+OVERDUE_THRESHOLD_DAYS = 30
 
 class OverdueInstallmentsWidget(QWidget):
     """Widget for managing overdue installments (>1 month past due)"""
@@ -72,8 +79,6 @@ class OverdueInstallmentsWidget(QWidget):
     
     def load_overdue_installments(self):
         """Load overdue installments grouped by policy"""
-        from ..models import Installment, InsurancePolicy
-        from ..utils.persian_utils import format_currency, PersianDateConverter
         
         # Clear existing widgets
         while self.policies_layout.count():
@@ -82,15 +87,15 @@ class OverdueInstallmentsWidget(QWidget):
                 child.widget().deleteLater()
         
         try:
-            # Get overdue installments - more than 1 month past due and not paid
+            # Get overdue installments - more than OVERDUE_THRESHOLD_DAYS days past due and not paid
             today = datetime.now()
-            one_month_ago = today - timedelta(days=30)
+            threshold_date = today - timedelta(days=OVERDUE_THRESHOLD_DAYS)
             
             query = self.session.query(Installment, InsurancePolicy).join(
                 InsurancePolicy
             ).filter(
                 InsurancePolicy.user_id == self.user.id,
-                Installment.due_date < one_month_ago,
+                Installment.due_date < threshold_date,
                 Installment.status.in_(['pending', 'overdue'])
             ).order_by(InsurancePolicy.policy_number, Installment.installment_number)
             
@@ -254,7 +259,6 @@ class OverdueInstallmentsWidget(QWidget):
     
     def view_details(self, installment, policy):
         """View installment and policy details"""
-        from ..utils.persian_utils import format_currency, PersianDateConverter
         
         details = (
             f"جزئیات قسط معوق:\n\n"
@@ -273,7 +277,6 @@ class OverdueInstallmentsWidget(QWidget):
     
     def mark_paid(self, installment):
         """Mark installment as paid"""
-        from ..controllers import InstallmentController
         
         reply = QMessageBox.question(
             self,

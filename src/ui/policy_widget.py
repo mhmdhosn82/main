@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt, QDate
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from .persian_date_edit import PersianDateEdit
+from ..controllers import PolicyController
 import logging
 
 logger = logging.getLogger(__name__)
@@ -176,7 +177,6 @@ class PolicyWidget(QWidget):
     
     def delete_policy(self, policy):
         """Delete policy after confirmation"""
-        from ..controllers import PolicyController
         
         reply = QMessageBox.question(
             self,
